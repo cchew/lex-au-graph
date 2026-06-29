@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1988/119/!main"/>
+          <FRBRuri value="/akn/au/act/1988/119"/>
+          <FRBRdate date="1988-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1988/119/eng@2026-06-04/!main"/>
+          <FRBRuri value="/akn/au/act/1988/119/eng@2026-06-04"/>
+          <FRBRdate date="2026-06-04" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1988/119/eng@2026-06-04/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1988/119/eng@2026-06-04/!main.akn"/>
+          <FRBRdate date="2026-06-22" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-6">
+          <num>6</num>
+          <heading>Interpretation</heading>
+          <content>
+            <p>In this Act, unless the contrary intention appears:</p>
+            <p><term refersTo="#term-personal-information">personal information</term> means <def>information or an opinion about an identified individual, or an individual who is reasonably identifiable.</def></p>
+            <p><term refersTo="#term-sensitive-information">sensitive information</term> means <def>information or an opinion about an individual's racial or ethnic origin, political opinions, or health information.</def></p>
+          </content>
+        </section>
+        <section eId="part-I__sec-13">
+          <num>13</num>
+          <heading>Interferences with privacy</heading>
+          <content>
+            <p>An act or practice is an interference with privacy if it breaches <ref href="#part-I__sec-6">section 6</ref>.</p>
+            <p>See also the <ref href="">Freedom of Information Act 1982</ref> for related access rights.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

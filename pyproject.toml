@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=72"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lex-au-graph"
+version = "0.6.0"
+description = "Cross-reference knowledge graph over AKN 3.0 XML corpus — Layer 2.5 of the AU Legislative Intelligence Stack"
+authors = [{name = "Ching Chew", email = "ching.chew@gmail.com"}]
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+    "networkx>=3.3",
+    "lxml>=5.3",
+    "fastmcp>=2.0",
+    "typer>=0.12",
+]
+
+[project.scripts]
+lexaugraph = "lexaugraph.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
