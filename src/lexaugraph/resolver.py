@@ -19,13 +19,17 @@ class DefinitionResolver:
             if data.get("act_frbr_uri") != act_frbr_uri:
                 continue
             if data.get("term") == term_lower:
+                def_text = data.get("definition_text")
+                section_eid = data.get("section_eid")
+                if not def_text or not section_eid:
+                    continue
                 act_data = self._graph.graph.nodes.get(act_frbr_uri, {})
                 return DefinitionResult(
                     term=term,
                     display_term=data.get("display_term", term),
-                    definition_text=data["definition_text"],
+                    definition_text=def_text,
                     act_frbr_uri=act_frbr_uri,
-                    section_eid=data["section_eid"],
+                    section_eid=section_eid,
                     act_title=act_data.get("title", act_frbr_uri),
                 )
         return None
@@ -51,17 +55,25 @@ class DefinitionResolver:
             if data.get("type") != "defined_term":
                 continue
             if data.get("term") == term_lower:
+                def_text = data.get("definition_text")
+                section_eid = data.get("section_eid")
+                if not def_text or not section_eid:
+                    continue
                 act_frbr_uri = data.get("act_frbr_uri", "")
                 act_data = self._graph.graph.nodes.get(act_frbr_uri, {})
                 results.append(DefinitionResult(
                     term=term,
                     display_term=data.get("display_term", term),
-                    definition_text=data["definition_text"],
+                    definition_text=def_text,
                     act_frbr_uri=act_frbr_uri,
-                    section_eid=data["section_eid"],
+                    section_eid=section_eid,
                     act_title=act_data.get("title", act_frbr_uri),
                 ))
         return results
+
+    def get_act_title(self, act_frbr_uri: str) -> str:
+        data = self._graph.graph.nodes.get(act_frbr_uri, {})
+        return data.get("title", act_frbr_uri)
 
     def get_act_terms(self, act_frbr_uri: str) -> list[dict[str, str]]:
         results = []

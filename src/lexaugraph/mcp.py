@@ -93,8 +93,7 @@ def get_act_terms_tool(act_frbr_uri: str) -> str:
     terms = _resolver.get_act_terms(act_frbr_uri)
     if not terms:
         return f"No defined terms found in {act_frbr_uri}."
-    act_data = _resolver._graph.graph.nodes.get(act_frbr_uri, {})
-    act_title = act_data.get("title", act_frbr_uri)
+    act_title = _resolver.get_act_title(act_frbr_uri)
     lines = [f"{len(terms)} defined terms in {act_title} ({act_frbr_uri}):"]
     for t in terms:
         lines.append(f"- {t['display_term']} ({t['section_eid']})")

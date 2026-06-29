@@ -29,12 +29,24 @@ def parse_act(xml_path: Path, index_entry: dict) -> ActData:
 
 
 def load_corpus(corpus_dir: Path) -> list[ActData]:
-    index = json.loads((corpus_dir / "index.json").read_text())
+    index_path = corpus_dir / "index.json"
+    if not index_path.exists():
+        raise FileNotFoundError(
+            f"No index.json found in {corpus_dir}. "
+            "Check the corpus path or run 'lexaugraph build --corpus-dir <path>'."
+        )
+    index = json.loads(index_path.read_text())
+    acts_map = index.get("acts")
+    if acts_map is None:
+        raise ValueError(f"index.json in {corpus_dir} is missing the 'acts' key.")
     result = []
-    for entry in index["acts"].values():
+    for entry in acts_map.values():
         xml_path = corpus_dir / entry["xml_path"]
         if xml_path.exists():
-            result.append(parse_act(xml_path, entry))
+            try:
+                result.append(parse_act(xml_path, entry))
+            except ValueError as e:
+                print(f"Warning: {e} — skipping.", file=sys.stderr)
         else:
             print(f"Warning: XML not found: {xml_path}", file=sys.stderr)
     return result
@@ -43,6 +55,10 @@ def load_corpus(corpus_dir: Path) -> list[ActData]:
 def _parse_act_node(root: ET._Element, index_entry: dict) -> ActNode:
     work_uri_el = root.find(f".//{AKN}FRBRWork/{AKN}FRBRuri")
     frbr_uri = work_uri_el.get("value", "").rstrip("/") if work_uri_el is not None else ""
+    if not frbr_uri:
+        raise ValueError(
+            f"FRBRuri missing in {index_entry.get('xml_path', '?')} — cannot build graph node."
+        )
 
     expr_date_el = root.find(f".//{AKN}FRBRExpression/{AKN}FRBRdate")
     compilation_date: Optional[str] = None
@@ -110,7 +126,7 @@ def _extract_defined_terms(
         term_text = (term_el.text or "").strip()
         if not term_text:
             continue
-        def_text = "".join(def_el.itertext()).strip().rstrip(".")
+        def_text = "".join(def_el.itertext()).strip()
         section_eid = _ancestor_section_eid(p)
         defined_terms.append(DefinedTermNode(
             term=term_text.lower(),

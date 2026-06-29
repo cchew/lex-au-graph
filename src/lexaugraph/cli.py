@@ -64,5 +64,9 @@ def serve(
 ) -> None:
     """Start the FastMCP server (stdio transport)."""
     from . import mcp as mcp_module
-    mcp_module.init(graph)
+    try:
+        mcp_module.init(graph)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
     mcp_module.mcp.run()

@@ -59,9 +59,10 @@ class LexAuGraph:
                 section_eid=term.section_eid,
                 definition_text=term.definition_text,
             )
-            section_id = f"{term.act_frbr_uri}#{term.section_eid}"
-            if section_id in self.graph.nodes:
-                self.graph.add_edge(section_id, term.node_id, type="defines")
+            if term.section_eid:
+                section_id = f"{term.act_frbr_uri}#{term.section_eid}"
+                if section_id in self.graph.nodes:
+                    self.graph.add_edge(section_id, term.node_id, type="defines")
 
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node
@@ -116,6 +117,10 @@ class LexAuGraph:
 
     @classmethod
     def load(cls, path: Path) -> LexAuGraph:
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Graph file not found: {path}. Run 'lexaugraph build' first."
+            )
         data = json.loads(path.read_text())
         g = cls()
         g.graph = nx.node_link_graph(data, edges="edges")
