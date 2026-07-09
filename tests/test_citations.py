@@ -50,6 +50,15 @@ def test_normalize_title_is_idempotent():
     assert once == twice
 
 
+def test_normalize_title_normalizes_curly_apostrophe():
+    # ' = right single quotation mark (curly apostrophe), as may appear in
+    # some AKN XML sources for titles like "Veterans' Entitlements Act 1986"
+    curly = "the Veterans’ Entitlements Act 1986"
+    straight = "the Veterans' Entitlements Act 1986"
+    assert normalize_title(curly) == normalize_title(straight)
+    assert normalize_title(curly) == ("veterans' entitlements act 1986", 1986)
+
+
 # --- is_self_citation ---
 
 def test_is_self_citation_true_for_matching_normalized_title():

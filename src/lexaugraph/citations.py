@@ -30,7 +30,7 @@ def normalize_title(text: str) -> Optional[tuple[str, int]]:
     including the year, or no year found).
     """
     normalized = " ".join(text.split()).lower()
-    normalized = normalized.replace("'", "'").replace("'", "'")
+    normalized = normalized.replace("’", "'").replace("‘", "'")
     normalized = _LEADING_ARTICLE_PATTERN.sub("", normalized)
     match = _YEAR_PATTERN.match(normalized)
     if not match:
