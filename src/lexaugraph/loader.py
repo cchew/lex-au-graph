@@ -8,6 +8,7 @@ from typing import Optional
 import lxml.etree as ET
 
 from .models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
+from . import citations
 
 AKN_NS = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
 AKN = f"{{{AKN_NS}}}"
@@ -108,9 +109,22 @@ def _parse_sections(
             is_cross_act = not href.startswith("#")
             ref_edges.append(RefEdge(
                 source_id=node.node_id,
-                target_href=href,
                 ref_text=ref_text,
                 is_cross_act=is_cross_act,
+                target_href=href,
+            ))
+
+        for raw_match in citations.extract_prose_citations(section):
+            normalized = citations.normalize_title(raw_match)
+            if normalized is None:
+                continue
+            title, _year = normalized
+            ref_edges.append(RefEdge(
+                source_id=node.node_id,
+                ref_text=raw_match,
+                is_cross_act=True,
+                target_href=None,
+                matched_title=title,
             ))
 
     return sections, ref_edges

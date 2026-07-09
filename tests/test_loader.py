@@ -65,3 +65,25 @@ def test_parse_act_extracts_cross_act_ref():
     data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
     cross_act_refs = [r for r in data.ref_edges if r.is_cross_act]
     assert any("Freedom of Information Act 1982" in r.ref_text for r in cross_act_refs)
+
+
+def test_parse_act_extracts_untagged_prose_citation():
+    data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    untagged_refs = [r for r in data.ref_edges if r.matched_title is not None]
+    assert any(r.matched_title == "freedom of information act 1982" for r in untagged_refs)
+
+
+def test_untagged_prose_citation_has_null_target_href():
+    data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    untagged_refs = [r for r in data.ref_edges if r.matched_title is not None]
+    foi_ref = next(r for r in untagged_refs if r.matched_title == "freedom of information act 1982")
+    assert foi_ref.target_href is None
+    assert foi_ref.is_cross_act is True
+
+
+def test_tagged_ref_text_still_stored_raw_with_the_prefix():
+    # Confirms the tagged-ref extraction path is untouched: ref_text keeps "the ",
+    # matched_title is None (normalization happens at resolution time in graph.py, not here).
+    data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    tagged_refs = [r for r in data.ref_edges if r.is_cross_act and r.matched_title is None]
+    assert any(r.ref_text == "the Freedom of Information Act 1982" for r in tagged_refs)
