@@ -1,13 +1,12 @@
 # lex-au-graph
 
-Layer 2.5 of the AU Legislative Intelligence Stack. Cross-reference knowledge graph over the lex-au AKN 3.0 XML corpus.
+Retrieval layer of the AU Legislative Intelligence Stack. Cross-reference knowledge graph over the lex-au AKN 3.0 XML corpus.
 
 ## Stack position
 
-Layer 1: lex-au (../lex-au/repo/) — AKN 3.0 XML corpus
-Layer 2: lex-au-search (../lex-au-search/repo/) — hybrid search API + MCP
-Layer 2.5: lex-au-graph (this repo) — cross-reference graph + definition resolution
-Layer 3: ClauseKit (../clause-kit/repo/) — rule extraction
+Corpus: lex-au (../lex-au/repo/) — AKN 3.0 XML corpus
+Retrieval: lex-au-search (../lex-au-search/repo/) — hybrid search API + MCP; lex-au-graph (this repo) — cross-reference graph + definition resolution
+Applications: ClauseKit (../clause-kit/repo/) — rule extraction; term-comparison (../term-comparison/repo/) — IM2026 definition-comparison bot, built directly on this repo's DefinitionResolver
 
 ## Setup
 

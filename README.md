@@ -2,18 +2,21 @@
 
 Cross-reference knowledge graph over Australian Commonwealth legislation.
 
-Layer 2.5 of the AU Legislative Intelligence Stack: sits between [lex-au](https://github.com/cchew/lex-au) (AKN XML corpus) and lex-au-search (hybrid vector search), providing graph-based definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
+Retrieval layer of the AU Legislative Intelligence Stack, alongside lex-au-search: sits between [lex-au](https://github.com/cchew/lex-au) (AKN XML corpus) and the search/rules/application layers, providing graph-based definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
 **Status: v0.6.0**
 
 ## Stack position
 
 ```
-Layer 1: lex-au          — AKN 3.0 XML corpus
-Layer 2: lex-au-search   — hybrid vector search + MCP
-Layer 2.5: lex-au-graph  — cross-reference graph + definition resolution (this repo)
-Layer 3: ClauseKit        — machine-readable rule extraction
+Corpus:       lex-au         — AKN 3.0 XML corpus
+Retrieval:    lex-au-search  — hybrid vector search + MCP
+              lex-au-graph   — cross-reference graph + definition resolution (this repo)
+Applications: ClauseKit       — machine-readable rule extraction
+              term-comparison — IM2026 definition-comparison bot, built directly on this repo's DefinitionResolver
 ```
+
+Call-order note: for queries about what a term means or how it's defined across Acts, this repo is the authoritative source — check it before or alongside lex-au-search, which can otherwise match the wrong Act's use of a homonymous term.
 
 ## What it does
 
