@@ -38,13 +38,19 @@ def extract_definitions_from_section(
     if not candidate_terms:
         return []
     prompt = build_extraction_prompt(section_text, candidate_terms)
-    response = client.messages.create(
+    create_kwargs = dict(
         model=model or "claude-sonnet-5",
         max_tokens=4096,
-        temperature=0,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
     )
+    try:
+        response = client.messages.create(temperature=0, **create_kwargs)
+    except anthropic.BadRequestError as e:
+        if "temperature" in str(e):
+            response = client.messages.create(**create_kwargs)
+        else:
+            raise
     raw = response.content[0].text.strip()
     raw = re.sub(r"^```json\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw).strip()
