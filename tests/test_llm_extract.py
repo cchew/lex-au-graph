@@ -17,8 +17,12 @@ SECTION_TEXT = (
 
 def _fake_client(response_text: str):
     """Build a fake anthropic.Anthropic-shaped client whose messages.create() returns
-    a canned response object matching the real SDK's response.content[0].text shape."""
-    response = SimpleNamespace(content=[SimpleNamespace(text=response_text)])
+    a canned response object matching the real SDK's response.content[0].text shape.
+    Includes a `type="text"` attribute since some models (e.g. extended-thinking
+    models) prepend non-text content blocks (ThinkingBlock) to response.content."""
+    response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text=response_text)]
+    )
     client = SimpleNamespace(
         messages=SimpleNamespace(create=lambda **kwargs: response)
     )
@@ -76,6 +80,24 @@ def test_markdown_fenced_json_is_stripped_and_parsed():
     ])
     fenced = f"```json\n{payload}\n```"
     client = _fake_client(fenced)
+    result = extract_definitions_from_section(SECTION_TEXT, ["other term"], client)
+    assert len(result) == 1
+    assert result[0]["term"] == "other term"
+
+
+def test_leading_non_text_content_block_is_skipped():
+    """Some models (extended-thinking) prepend a ThinkingBlock with no .text attribute
+    before the actual text block. The text block must still be found and parsed."""
+    payload = json.dumps([
+        {
+            "term": "other term",
+            "definition_text": "other term means something else entirely different.",
+        }
+    ])
+    thinking_block = SimpleNamespace(type="thinking")  # deliberately has no .text
+    text_block = SimpleNamespace(type="text", text=payload)
+    response = SimpleNamespace(content=[thinking_block, text_block])
+    client = SimpleNamespace(messages=SimpleNamespace(create=lambda **kwargs: response))
     result = extract_definitions_from_section(SECTION_TEXT, ["other term"], client)
     assert len(result) == 1
     assert result[0]["term"] == "other term"

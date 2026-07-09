@@ -51,7 +51,10 @@ def extract_definitions_from_section(
             response = client.messages.create(**create_kwargs)
         else:
             raise
-    raw = response.content[0].text.strip()
+    text_blocks = [b.text for b in response.content if getattr(b, "type", None) == "text"]
+    if not text_blocks:
+        return []
+    raw = text_blocks[0].strip()
     raw = re.sub(r"^```json\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw).strip()
     try:
