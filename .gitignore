@@ -11,3 +11,4 @@ graph.json.bak
 .pytest_cache/
 .superpowers/
 .env
+.worktrees/
