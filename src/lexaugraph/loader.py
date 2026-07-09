@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -10,6 +11,9 @@ from .models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
 
 AKN_NS = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
 AKN = f"{{{AKN_NS}}}"
+
+_UNTAGGED_DEF_PATTERN = re.compile(r"^([a-zA-Z][a-zA-Z0-9 \-']{2,60}) means ")
+_RECURRENCE_THRESHOLD = 2
 
 
 def parse_act(xml_path: Path, index_entry: dict) -> ActData:
@@ -145,3 +149,49 @@ def _ancestor_section_eid(element: ET._Element) -> str:
             return parent.get("eId", "")
         parent = parent.getparent()
     return ""
+
+
+def find_untagged_candidates(root: ET._Element) -> list[tuple[str, ET._Element]]:
+    """Find <p> elements with no child elements whose text matches an 'X means' pattern.
+
+    These are untagged prose definitions (no AKN <term>/<def> markup) — e.g.
+    "<p>income support payment means a payment of:</p>" followed by sibling
+    <paragraph> elements holding the lettered sub-clauses. Returns
+    (candidate_term, the <p> element) pairs.
+    """
+    candidates = []
+    for p in root.iter(f"{AKN}p"):
+        if len(p) == 0 and p.text:
+            m = _UNTAGGED_DEF_PATTERN.match(p.text.strip())
+            if m:
+                candidates.append((m.group(1).strip(), p))
+    return candidates
+
+
+def filter_by_recurrence(
+    candidates: list[tuple[str, ET._Element]], full_text: str
+) -> list[tuple[str, ET._Element]]:
+    """Keep candidates whose term recurs more than _RECURRENCE_THRESHOLD times in full_text.
+
+    Validated empirically (see docs/research/legislation/2026-07-09-legal-definition-extraction-nlp-scan.md):
+    candidates recurring more than twice elsewhere in the Act are far more likely to be genuine
+    defined terms than incidental phrases matching the "X means" pattern.
+    """
+    kept = []
+    for term, p in candidates:
+        pattern = re.compile(r"\b" + re.escape(term) + r"\b", re.IGNORECASE)
+        if len(pattern.findall(full_text)) > _RECURRENCE_THRESHOLD:
+            kept.append((term, p))
+    return kept
+
+
+def _full_act_text(root: ET._Element) -> str:
+    """Whitespace-normalised full text of the entire Act, for recurrence counting.
+
+    Simplest correct approach: join root.itertext() directly, mirroring the same pattern
+    _parse_sections() already uses per-section (`" ".join("".join(section.itertext()).split())`).
+    Joining SectionNode.text values instead would require re-parsing sections here and would
+    miss any text outside <section> elements (e.g. schedules, preambles) — direct itertext()
+    on the whole tree is both simpler and strictly more complete.
+    """
+    return " ".join("".join(root.itertext()).split())
