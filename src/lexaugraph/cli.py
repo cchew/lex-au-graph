@@ -9,6 +9,12 @@ app = typer.Typer(name="lexaugraph", help="lex-au-graph: cross-reference graph f
 DEFAULT_GRAPH = Path("graph.json")
 DEFAULT_CORPUS = Path("../../lex-au/repo/corpus")
 
+# Sections with many candidate terms (e.g. interpretation/"Definitions" sections with 70+
+# candidates) can push a single LLM response past its output token budget before finishing
+# the JSON array (observed: 79 terms -> stop_reason="max_tokens", truncated/invalid JSON,
+# 0 results). Batching keeps each call's output comfortably within budget.
+_EXTRACTION_BATCH_SIZE = 15
+
 
 @app.command()
 def build(
@@ -99,15 +105,17 @@ def extract_untagged(
             continue
         section_text = " ".join("".join(section_el.itertext()).split())
         terms_only = [t for t, _ in term_pairs]
-        results = extract_definitions_from_section(section_text, terms_only, client)
-        for r in results:
-            all_verified.append(DefinedTermNode(
-                term=r["term"].lower(),
-                display_term=r["term"],
-                act_frbr_uri=act_frbr_uri,
-                section_eid=section_eid,
-                definition_text=r["definition_text"],
-            ))
+        for i in range(0, len(terms_only), _EXTRACTION_BATCH_SIZE):
+            batch = terms_only[i:i + _EXTRACTION_BATCH_SIZE]
+            results = extract_definitions_from_section(section_text, batch, client)
+            for r in results:
+                all_verified.append(DefinedTermNode(
+                    term=r["term"].lower(),
+                    display_term=r["term"],
+                    act_frbr_uri=act_frbr_uri,
+                    section_eid=section_eid,
+                    definition_text=r["definition_text"],
+                ))
 
     typer.echo(f"{len(all_verified)} definitions verified (byte-exact substring match).")
     for t in all_verified:

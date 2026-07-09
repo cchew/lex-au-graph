@@ -40,7 +40,7 @@ def extract_definitions_from_section(
     prompt = build_extraction_prompt(section_text, candidate_terms)
     create_kwargs = dict(
         model=model or "claude-sonnet-5",
-        max_tokens=4096,
+        max_tokens=8192,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -61,8 +61,12 @@ def extract_definitions_from_section(
         data = json.loads(raw)
     except json.JSONDecodeError:
         return []
+    if not isinstance(data, list):
+        return []
     verified = []
     for item in data:
+        if not isinstance(item, dict):
+            continue
         term = item.get("term", "")
         def_text = item.get("definition_text", "")
         if term and def_text and def_text in section_text:

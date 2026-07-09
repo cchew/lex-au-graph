@@ -103,6 +103,26 @@ def test_leading_non_text_content_block_is_skipped():
     assert result[0]["term"] == "other term"
 
 
+def test_non_list_json_returns_empty_list_without_raising():
+    """A response that is valid JSON but not a list (e.g. a single dict, or a
+    truncated-output artifact) must be rejected gracefully, not raise AttributeError
+    when the code later tries item.get(...)."""
+    client = _fake_client(json.dumps({"term": "other term", "definition_text": "x"}))
+    result = extract_definitions_from_section(SECTION_TEXT, ["other term"], client)
+    assert result == []
+
+
+def test_list_with_non_dict_items_skips_them_without_raising():
+    payload = json.dumps([
+        "not a dict",
+        {"term": "other term", "definition_text": "other term means something else entirely different."},
+    ])
+    client = _fake_client(payload)
+    result = extract_definitions_from_section(SECTION_TEXT, ["other term"], client)
+    assert len(result) == 1
+    assert result[0]["term"] == "other term"
+
+
 def test_empty_candidate_terms_returns_empty_list_without_calling_client():
     calls = []
     client = SimpleNamespace(
