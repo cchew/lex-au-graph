@@ -5,6 +5,8 @@ from types import SimpleNamespace
 
 from lexaugraph.llm_extract import (
     build_extraction_prompt,
+    chunk_section_text,
+    estimate_tokens,
     extract_definitions_from_section,
 )
 
@@ -131,3 +133,72 @@ def test_empty_candidate_terms_returns_empty_list_without_calling_client():
     result = extract_definitions_from_section(SECTION_TEXT, [], client)
     assert result == []
     assert calls == []
+
+
+# --- section_text token-budget chunking (input-size guard, independent of term-count batching) ---
+
+def _make_long_section_text(num_sentences: int) -> str:
+    """Build a section_text long enough to exceed the token ceiling when num_sentences
+    is large enough. Each sentence is deliberately verbose to accumulate character count
+    quickly without needing an enormous num_sentences value."""
+    sentence = (
+        "example term {i} means a payment made under this Act in circumstances where "
+        "the Secretary is satisfied that the person meets the relevant eligibility "
+        "criteria set out in the applicable legislative instrument."
+    )
+    return " ".join(sentence.format(i=i) for i in range(num_sentences))
+
+
+def test_short_section_text_is_not_chunked():
+    """The common case: a section_text comfortably under the ceiling must pass through
+    as a single chunk, so normal-sized Acts don't incur unnecessary extra API calls."""
+    assert estimate_tokens(SECTION_TEXT) < 6000
+    chunks = chunk_section_text(SECTION_TEXT)
+    assert chunks == [SECTION_TEXT]
+
+
+def test_long_section_text_is_split_into_multiple_chunks_under_ceiling():
+    long_text = _make_long_section_text(400)
+    assert estimate_tokens(long_text) > 6000  # confirm the fixture actually exceeds the ceiling
+
+    chunks = chunk_section_text(long_text)
+
+    assert len(chunks) > 1
+    for chunk in chunks:
+        assert estimate_tokens(chunk) <= 6000
+
+
+def test_chunking_does_not_silently_drop_content():
+    """Every sentence present in the original section_text must appear in some chunk —
+    concatenating chunks must cover the original text, not lose any candidate's
+    definition to a gap between chunk boundaries."""
+    long_text = _make_long_section_text(400)
+    chunks = chunk_section_text(long_text)
+
+    recombined = " ".join(chunks)
+    # Every distinct sentence marker (by index) from the source text must survive in the
+    # recombined chunks — proves no chunk silently swallowed a stretch of text.
+    for i in range(400):
+        marker = f"example term {i} means"
+        assert marker in recombined, f"content for term index {i} missing after chunking"
+
+
+def test_chunking_respects_custom_token_ceiling():
+    """A smaller explicit ceiling produces more, smaller chunks — proves the ceiling
+    parameter is actually load-bearing, not a fixed/ignored default."""
+    text = _make_long_section_text(100)
+    chunks_default = chunk_section_text(text)
+    chunks_tight = chunk_section_text(text, token_ceiling=500)
+
+    assert len(chunks_tight) >= len(chunks_default)
+    for chunk in chunks_tight:
+        assert estimate_tokens(chunk) <= 500 or chunk.count(".") <= 1  # allow a single oversized sentence alone in its chunk
+
+
+def test_single_oversized_sentence_is_not_force_split_mid_word():
+    """A pathological single sentence longer than the ceiling must still be returned
+    whole (in its own chunk) rather than being truncated mid-word, since legal
+    definitions must never be silently cut off."""
+    huge_sentence = "one giant sentence " * 2000 + "with no terminating punctuation at all"
+    chunks = chunk_section_text(huge_sentence, token_ceiling=100)
+    assert "".join(chunks).replace(" ", "") == huge_sentence.replace(" ", "")

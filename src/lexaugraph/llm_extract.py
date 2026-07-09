@@ -4,6 +4,66 @@ import re
 
 import anthropic
 
+# Conventional rough heuristic for English prose: ~4 characters per token. No tokenizer
+# dependency needed for a conservative estimate used purely to decide whether to chunk.
+_CHARS_PER_TOKEN = 4
+
+# The original max_tokens truncation bug (79 candidate terms in one call) burned 4482 of
+# the 8192 output-token budget on extended-thinking alone before ever emitting the JSON
+# array. Term-count batching (_EXTRACTION_BATCH_SIZE in cli.py) bounds output-array size,
+# but does nothing to bound section_text — the input most plausibly correlated with
+# thinking-token consumption. This ceiling is a conservative cap on estimated input
+# tokens for section_text, independent of how many candidate terms are batched per call.
+_SECTION_TEXT_TOKEN_CEILING = 6000
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token-count estimate using the conventional ~4 chars/token heuristic for
+    English prose. Not exact — used only to decide whether section_text needs chunking."""
+    return len(text) // _CHARS_PER_TOKEN
+
+
+def chunk_section_text(
+    section_text: str,
+    token_ceiling: int = _SECTION_TEXT_TOKEN_CEILING,
+) -> list[str]:
+    """Split section_text into chunks whose estimated token count stays under
+    token_ceiling, splitting on sentence-ish boundaries so definitions aren't cut
+    mid-sentence any more than necessary.
+
+    If section_text already fits under the ceiling, returns [section_text] unchanged
+    (the common case — no unnecessary extra API calls for ordinary-sized sections).
+
+    Chunks are built by greedily accumulating sentence-like segments (split on ". "
+    boundaries, since section_text is already whitespace-normalised single-line prose)
+    until adding the next segment would exceed the ceiling. A single segment that alone
+    exceeds the ceiling is kept whole in its own chunk rather than being force-split
+    mid-word, since legal definitions must never be silently truncated mid-clause.
+    """
+    if estimate_tokens(section_text) <= token_ceiling:
+        return [section_text]
+
+    ceiling_chars = token_ceiling * _CHARS_PER_TOKEN
+    # Split on sentence-ish boundaries, keeping the delimiter attached to each segment.
+    segments = re.split(r"(?<=[.;])\s+", section_text)
+
+    chunks: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for seg in segments:
+        seg_len = len(seg) + (1 if current else 0)  # account for the joining space
+        if current and current_len + seg_len > ceiling_chars:
+            chunks.append(" ".join(current))
+            current = [seg]
+            current_len = len(seg)
+        else:
+            current.append(seg)
+            current_len += seg_len
+    if current:
+        chunks.append(" ".join(current))
+    return chunks
+
+
 _SYSTEM_PROMPT = (
     "You extract legal defined-term definitions from Australian Commonwealth legislation section text. "
     "For each candidate term given, find its definition within the section text and return the FULL "

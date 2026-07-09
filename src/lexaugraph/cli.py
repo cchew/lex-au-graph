@@ -76,7 +76,7 @@ def extract_untagged(
     import lxml.etree as ET
     from .graph import LexAuGraph
     from .loader import AKN, find_untagged_candidates, filter_by_recurrence, _ancestor_section_eid, _full_act_text
-    from .llm_extract import extract_definitions_from_section
+    from .llm_extract import chunk_section_text, extract_definitions_from_section
     from .models import DefinedTermNode
 
     g = LexAuGraph.load(graph)
@@ -105,17 +105,36 @@ def extract_untagged(
             continue
         section_text = " ".join("".join(section_el.itertext()).split())
         terms_only = [t for t, _ in term_pairs]
-        for i in range(0, len(terms_only), _EXTRACTION_BATCH_SIZE):
-            batch = terms_only[i:i + _EXTRACTION_BATCH_SIZE]
-            results = extract_definitions_from_section(section_text, batch, client)
-            for r in results:
-                all_verified.append(DefinedTermNode(
-                    term=r["term"].lower(),
-                    display_term=r["term"],
-                    act_frbr_uri=act_frbr_uri,
-                    section_eid=section_eid,
-                    definition_text=r["definition_text"],
-                ))
+        # Guard on input size (section_text), independent of _EXTRACTION_BATCH_SIZE which
+        # only bounds output-array size (candidate-term count). A single oversized section
+        # is split into token-bounded chunks; every chunk is offered the full candidate-term
+        # batch rather than trying to assign each candidate to a specific chunk by character
+        # offset — extract_definitions_from_section already safely omits any term whose
+        # definition isn't found verbatim in the text it was given, so a chunk that doesn't
+        # contain a given term's definition simply contributes nothing for that term. This
+        # is the simpler, more robust option: no need to track/maintain per-candidate
+        # character offsets through the itertext()/whitespace-normalisation pipeline, and no
+        # risk of a mis-assigned offset silently dropping a real definition from every chunk.
+        section_chunks = chunk_section_text(section_text)
+        seen_terms_in_section: set[str] = set()
+        for chunk in section_chunks:
+            for i in range(0, len(terms_only), _EXTRACTION_BATCH_SIZE):
+                batch = terms_only[i:i + _EXTRACTION_BATCH_SIZE]
+                results = extract_definitions_from_section(chunk, batch, client)
+                for r in results:
+                    # Union across chunks: a term already verified in an earlier chunk for
+                    # this section is not overwritten or duplicated by a later chunk.
+                    key = r["term"].lower()
+                    if key in seen_terms_in_section:
+                        continue
+                    seen_terms_in_section.add(key)
+                    all_verified.append(DefinedTermNode(
+                        term=key,
+                        display_term=r["term"],
+                        act_frbr_uri=act_frbr_uri,
+                        section_eid=section_eid,
+                        definition_text=r["definition_text"],
+                    ))
 
     typer.echo(f"{len(all_verified)} definitions verified (byte-exact substring match).")
     for t in all_verified:
