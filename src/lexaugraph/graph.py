@@ -6,7 +6,7 @@ from typing import Any
 import networkx as nx
 
 from .loader import load_corpus
-from .models import ActData, RefEdge
+from .models import ActData, DefinedTermNode, RefEdge
 
 
 class LexAuGraph:
@@ -63,6 +63,25 @@ class LexAuGraph:
                 section_id = f"{term.act_frbr_uri}#{term.section_eid}"
                 if section_id in self.graph.nodes:
                     self.graph.add_edge(section_id, term.node_id, type="defines")
+
+    def add_defined_term(self, term: DefinedTermNode) -> None:
+        """Add a single verified defined term without re-adding act/section nodes.
+
+        Used to backfill untagged prose definitions recovered by the LLM extraction
+        pipeline into a graph.json where the Act and its sections already exist.
+        """
+        self.graph.add_node(
+            term.node_id,
+            type="defined_term",
+            term=term.term,
+            display_term=term.display_term,
+            act_frbr_uri=term.act_frbr_uri,
+            section_eid=term.section_eid,
+            definition_text=term.definition_text,
+        )
+        section_id = f"{term.act_frbr_uri}#{term.section_eid}"
+        if section_id in self.graph.nodes:
+            self.graph.add_edge(section_id, term.node_id, type="defines")
 
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node

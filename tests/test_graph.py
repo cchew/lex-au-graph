@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
-from lexaugraph.models import ActData
+from lexaugraph.models import ActData, DefinedTermNode
 
 FIXTURES = Path(__file__).parent / "fixtures"
 INDEX_ENTRY = {
@@ -98,3 +98,42 @@ def test_get_sections(graph_with_privacy: LexAuGraph):
     sections = graph_with_privacy.get_sections("/akn/au/act/1988/119")
     eids = [s["eid"] for s in sections]
     assert "part-I__sec-6" in eids
+
+
+def test_add_defined_term_adds_queryable_node_without_touching_act_or_section(
+    graph_with_privacy: LexAuGraph,
+):
+    act_id = "/akn/au/act/1988/119"
+    sec_id = "/akn/au/act/1988/119#part-I__sec-6"
+    nodes_before = graph_with_privacy.graph.number_of_nodes()
+    edges_before = graph_with_privacy.graph.number_of_edges()
+    act_node_before = dict(graph_with_privacy.graph.nodes[act_id])
+    sec_node_before = dict(graph_with_privacy.graph.nodes[sec_id])
+
+    backfilled = DefinedTermNode(
+        term="income support payment",
+        display_term="income support payment",
+        act_frbr_uri=act_id,
+        section_eid="part-I__sec-6",
+        definition_text="income support payment means a payment of a designated kind.",
+    )
+    graph_with_privacy.add_defined_term(backfilled)
+
+    term_id = "/akn/au/act/1988/119#term-income_support_payment"
+    assert term_id in graph_with_privacy.graph.nodes
+    node = graph_with_privacy.graph.nodes[term_id]
+    assert node["type"] == "defined_term"
+    assert node["term"] == "income support payment"
+    assert node["definition_text"] == backfilled.definition_text
+
+    # New defines edge from the section to the new term
+    assert graph_with_privacy.graph.has_edge(sec_id, term_id)
+    assert graph_with_privacy.graph.edges[sec_id, term_id]["type"] == "defines"
+
+    # Node/edge counts grew by exactly one node and one edge, no duplication
+    assert graph_with_privacy.graph.number_of_nodes() == nodes_before + 1
+    assert graph_with_privacy.graph.number_of_edges() == edges_before + 1
+
+    # Existing act/section nodes untouched
+    assert dict(graph_with_privacy.graph.nodes[act_id]) == act_node_before
+    assert dict(graph_with_privacy.graph.nodes[sec_id]) == sec_node_before
