@@ -151,20 +151,43 @@ def _ancestor_section_eid(element: ET._Element) -> str:
     return ""
 
 
+_INLINE_FORMATTING_TAGS = {"b", "i", "u", "sup", "sub", "span"}
+
+
 def find_untagged_candidates(root: ET._Element) -> list[tuple[str, ET._Element]]:
-    """Find <p> elements with no child elements whose text matches an 'X means' pattern.
+    """Find <p> elements with no substantive child elements whose text matches an
+    'X means' pattern.
 
     These are untagged prose definitions (no AKN <term>/<def> markup) — e.g.
     "<p>income support payment means a payment of:</p>" followed by sibling
     <paragraph> elements holding the lettered sub-clauses. Returns
     (candidate_term, the <p> element) pairs.
+
+    Two structural shapes are matched:
+      1. A fully childless <p> — match against p.text directly.
+      2. A <p> whose only children are inline-formatting tags (<b>, <i>, <u>,
+         <sup>, <sub>, <span> — never <term>/<def>) — match against the
+         flattened itertext(). This is the shape found in the real corpus for
+         terms like "income support payment", where OPC/AKN pipeline markup
+         wraps the definiendum in a bold/italic span without adding semantic
+         <term>/<def> tagging. Any <p> with a block-level or semantic child
+         (e.g. <term>, <def>, <ul>, <blockList>) is excluded either way, since
+         such a child would not be in _INLINE_FORMATTING_TAGS.
     """
     candidates = []
     for p in root.iter(f"{AKN}p"):
-        if len(p) == 0 and p.text:
-            m = _UNTAGGED_DEF_PATTERN.match(p.text.strip())
-            if m:
-                candidates.append((m.group(1).strip(), p))
+        if len(p) == 0:
+            if not p.text:
+                continue
+            text = p.text.strip()
+        else:
+            child_tags = {c.tag.split("}")[-1] for c in p}
+            if not child_tags <= _INLINE_FORMATTING_TAGS:
+                continue
+            text = "".join(p.itertext()).strip()
+        m = _UNTAGGED_DEF_PATTERN.match(text)
+        if m:
+            candidates.append((m.group(1).strip(), p))
     return candidates
 
 

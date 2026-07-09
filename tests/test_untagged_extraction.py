@@ -73,3 +73,42 @@ def test_candidate_recurring_zero_to_two_times_is_filtered_out():
     kept = filter_by_recurrence(candidates, full_text)
     kept_terms = [term for term, _ in kept]
     assert "rare obscure term" not in kept_terms
+
+
+def test_p_with_only_inline_formatting_children_is_still_a_candidate():
+    # Real-world shape found in Social Security Act 1991: the definiendum/verb text is
+    # wrapped in <b>/<i> inline-formatting spans, not <term>/<def>. len(p) > 0 here, but
+    # since the only children are inline-formatting tags (never term/def), this must still
+    # be picked up via itertext() — otherwise the flagship "income support payment" term
+    # (which has exactly this shape) is silently missed.
+    xml = _wrap(
+        '<p><b></b><i> </i>means a payment of:</p>'
+    )
+    # Note: p.text is None here (all content is in children/tails); the definiendum
+    # itself is supplied via a preceding heading-like <b> wrapping "income support payment".
+    # Simulate the real shape: <b>income support payment</b><i> </i>means a payment of:
+    xml2 = _wrap(
+        "<p><b>income support payment</b><i> </i>means a payment of:</p>"
+    )
+    root = ET.fromstring(xml2)
+    candidates = find_untagged_candidates(root)
+    terms = [term for term, _ in candidates]
+    assert "income support payment" in terms
+
+
+def test_p_with_only_inline_formatting_children_and_no_means_pattern_is_not_a_candidate():
+    xml = _wrap("<p><b>Note</b><i>: </i>this is not a definition.</p>")
+    root = ET.fromstring(xml)
+    candidates = find_untagged_candidates(root)
+    assert candidates == []
+
+
+def test_p_with_block_level_child_is_still_excluded():
+    # A block-level child (e.g. a nested list) is a genuinely different structural shape
+    # from inline formatting — must remain excluded to avoid picking up tagged/complex content.
+    xml = _wrap(
+        '<p>widget means <ul><li>a thing</li></ul> as follows:</p>'
+    )
+    root = ET.fromstring(xml)
+    candidates = find_untagged_candidates(root)
+    assert candidates == []
