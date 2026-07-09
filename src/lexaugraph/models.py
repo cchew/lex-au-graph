@@ -41,9 +41,10 @@ class DefinedTermNode:
 @dataclass
 class RefEdge:
     source_id: str
-    target_href: str
     ref_text: str
     is_cross_act: bool
+    target_href: Optional[str] = None
+    matched_title: Optional[str] = None
 
 
 @dataclass

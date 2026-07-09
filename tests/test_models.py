@@ -41,3 +41,20 @@ def test_definition_result():
         act_title="Privacy Act 1988",
     )
     assert r.act_title == "Privacy Act 1988"
+
+
+def test_ref_edge_defaults_target_href_and_matched_title_to_none():
+    r = RefEdge(source_id="/akn/au/act/1988/119#sec-1", ref_text="the Corporations Act 2001", is_cross_act=True)
+    assert r.target_href is None
+    assert r.matched_title is None
+
+
+def test_ref_edge_matched_title_set_for_untagged_path():
+    r = RefEdge(
+        source_id="/akn/au/act/1988/119#sec-1",
+        ref_text="Corporations Act 2001",
+        is_cross_act=True,
+        target_href=None,
+        matched_title="corporations act 2001",
+    )
+    assert r.matched_title == "corporations act 2001"
