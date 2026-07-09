@@ -5,6 +5,7 @@ from typing import Any
 
 import networkx as nx
 
+from .citations import is_self_citation, normalize_title
 from .loader import load_corpus
 from .models import ActData, DefinedTermNode, RefEdge
 
@@ -13,6 +14,16 @@ class LexAuGraph:
     def __init__(self) -> None:
         self.graph: nx.DiGraph = nx.DiGraph()
         self._title_index: dict[str, str] = {}
+        self._citation_candidates: dict[str, dict[str, Any]] = {}
+        self._untagged_matches: list[str] = []
+        # Refs that failed to resolve because the target Act hadn't been loaded yet.
+        # Retried whenever a new Act's title lands in _title_index, since acts can be
+        # added to the graph in any order via repeated add_act_data() calls.
+        self._pending_refs: list[tuple[str, RefEdge, str]] = []  # (title, ref, source_act_frbr_uri)
+        self.citation_stats: dict[str, dict[str, int]] = {
+            "tagged": {"total": 0, "self_citation_filtered": 0, "resolved": 0, "unresolved": 0},
+            "untagged": {"total": 0, "self_citation_filtered": 0, "resolved": 0, "unresolved": 0},
+        }
 
     def build(self, corpus_dir: Path) -> None:
         acts: list[ActData] = list(load_corpus(corpus_dir))
@@ -36,6 +47,9 @@ class LexAuGraph:
         )
         if act.title:
             self._title_index[act.title.lower()] = act.frbr_uri
+            normalized_own_title = normalize_title(act.title)
+            if normalized_own_title is not None:
+                self._retry_pending_refs(normalized_own_title[0], act.frbr_uri)
 
         for section in act_data.sections:
             self.graph.add_node(
@@ -86,7 +100,7 @@ class LexAuGraph:
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node
         for ref in act_data.ref_edges:
-            target_id = self._resolve_ref(ref, act.frbr_uri)
+            target_id = self._resolve_ref(ref, act.frbr_uri, act.title)
             if target_id and target_id in self.graph.nodes:
                 self.graph.add_edge(
                     ref.source_id,
@@ -96,14 +110,88 @@ class LexAuGraph:
                     is_cross_act=ref.is_cross_act,
                 )
 
-    def _resolve_ref(self, ref: RefEdge, act_frbr_uri: str) -> str | None:
+    def _resolve_ref(self, ref: RefEdge, act_frbr_uri: str, act_title: str) -> str | None:
         href = ref.target_href
-        if href.startswith("#"):
+        if href and href.startswith("#"):
             return f"{act_frbr_uri}{href}"
-        if href.startswith("/akn/au"):
+        if href and href.startswith("/akn/au"):
             return href
-        # Unresolved cross-act ref: try to match ref_text against known act titles
-        return self._title_index.get(ref.ref_text.lower().strip())
+        if not ref.is_cross_act:
+            return None
+
+        bucket = "untagged" if ref.matched_title else "tagged"
+        if bucket == "untagged":
+            self._untagged_matches.append(ref.matched_title)
+
+        raw = ref.matched_title if ref.matched_title else ref.ref_text
+        normalized = normalize_title(raw)
+        if normalized is None:
+            return None
+        title, year = normalized
+
+        if is_self_citation(title, act_title):
+            self.citation_stats[bucket]["self_citation_filtered"] += 1
+            return None
+
+        self.citation_stats[bucket]["total"] += 1
+        target_id = self._title_index.get(title)
+        if target_id is None:
+            self.citation_stats[bucket]["unresolved"] += 1
+            self._record_unresolved(title, year, act_frbr_uri)
+            self._pending_refs.append((title, ref, act_frbr_uri, bucket))
+        else:
+            self.citation_stats[bucket]["resolved"] += 1
+        return target_id
+
+    def _record_unresolved(self, title: str, year: int, source_act_frbr_uri: str) -> None:
+        entry = self._citation_candidates.setdefault(
+            title, {"title": title, "year": year, "mention_count": 0, "cited_by": {}}
+        )
+        entry["mention_count"] += 1
+        entry["cited_by"][source_act_frbr_uri] = entry["cited_by"].get(source_act_frbr_uri, 0) + 1
+
+    def _retry_pending_refs(self, newly_indexed_title: str, target_frbr_uri: str) -> None:
+        """Retroactively resolve refs recorded as unresolved before their target Act loaded.
+
+        Acts can be added to the graph in any order via repeated add_act_data() calls, so a
+        citation to an Act that hasn't loaded yet must not be permanently lost once that Act
+        does load. Matching entries are turned into graph edges and removed from both the
+        pending queue and the candidates/stats bookkeeping that treated them as unresolved.
+        """
+        still_pending: list[tuple[str, RefEdge, str, str]] = []
+        for title, ref, source_act_frbr_uri, bucket in self._pending_refs:
+            if title != newly_indexed_title:
+                still_pending.append((title, ref, source_act_frbr_uri, bucket))
+                continue
+            if target_frbr_uri in self.graph.nodes:
+                self.graph.add_edge(
+                    ref.source_id,
+                    target_frbr_uri,
+                    type="ref",
+                    ref_text=ref.ref_text,
+                    is_cross_act=ref.is_cross_act,
+                )
+            self.citation_stats[bucket]["unresolved"] -= 1
+            self.citation_stats[bucket]["resolved"] += 1
+            self._unrecord_unresolved(title, source_act_frbr_uri)
+        self._pending_refs = still_pending
+
+    def _unrecord_unresolved(self, title: str, source_act_frbr_uri: str) -> None:
+        entry = self._citation_candidates.get(title)
+        if entry is None:
+            return
+        entry["mention_count"] -= 1
+        entry["cited_by"][source_act_frbr_uri] -= 1
+        if entry["cited_by"][source_act_frbr_uri] <= 0:
+            del entry["cited_by"][source_act_frbr_uri]
+        if entry["mention_count"] <= 0:
+            del self._citation_candidates[title]
+
+    def citation_candidates_report(self) -> list[dict[str, Any]]:
+        return sorted(self._citation_candidates.values(), key=lambda e: -e["mention_count"])
+
+    def low_confidence_untagged_sample(self, n: int = 10) -> list[str]:
+        return sorted(self._untagged_matches, key=lambda t: len(t.split()))[:n]
 
     def stats(self) -> dict[str, Any]:
         node_types: dict[str, int] = {}

@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
-from lexaugraph.models import ActData, DefinedTermNode
+from lexaugraph.models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
 
 FIXTURES = Path(__file__).parent / "fixtures"
 INDEX_ENTRY = {
@@ -137,3 +137,101 @@ def test_add_defined_term_adds_queryable_node_without_touching_act_or_section(
     # Existing act/section nodes untouched
     assert dict(graph_with_privacy.graph.nodes[act_id]) == act_node_before
     assert dict(graph_with_privacy.graph.nodes[sec_id]) == sec_node_before
+
+
+FOI_INDEX_ENTRY = {
+    "name": "Freedom of Information Act 1982",
+    "year": 1982,
+    "number": 3,
+    "effective_date": "2026-06-04",
+    "xml_path": "xml/freedom-of-information-act-1982.xml",
+}
+
+
+def test_tagged_cross_act_ref_resolves_once_both_acts_loaded(graph_with_privacy: LexAuGraph):
+    # Regression test for the title-normalization bug: before the fix, this citation
+    # (ref_text = "the Freedom of Information Act 1982") never resolved because the
+    # title-index lookup used raw .lower().strip() instead of normalize_title().
+    foi_data = parse_act(FIXTURES / "freedom-of-information-act-1982.xml", FOI_INDEX_ENTRY)
+    graph_with_privacy.add_act_data(foi_data)
+
+    src = "/akn/au/act/1988/119#part-I__sec-13"
+    tgt = "/akn/au/act/1982/3"
+    assert graph_with_privacy.graph.has_edge(src, tgt)
+    edge = graph_with_privacy.graph.edges[src, tgt]
+    assert edge["type"] == "ref"
+    assert edge["is_cross_act"] is True
+
+
+def test_untagged_prose_citation_resolves_when_act_loaded(graph_with_privacy: LexAuGraph):
+    foi_data = parse_act(FIXTURES / "freedom-of-information-act-1982.xml", FOI_INDEX_ENTRY)
+    graph_with_privacy.add_act_data(foi_data)
+
+    # The untagged sentence added in Task 3: "This section does not limit the Freedom
+    # of Information Act 1982." — same section, same target, resolved via matched_title.
+    src = "/akn/au/act/1988/119#part-I__sec-13"
+    tgt = "/akn/au/act/1982/3"
+    assert graph_with_privacy.graph.has_edge(src, tgt)
+    assert graph_with_privacy.citation_stats["untagged"]["resolved"] >= 1
+
+
+def test_unresolved_cross_act_citation_recorded_as_candidate(graph_with_privacy: LexAuGraph):
+    # FOI Act is NOT loaded here — both the tagged and untagged citations to it
+    # should land in the candidates report, not silently vanish.
+    report = graph_with_privacy.citation_candidates_report()
+    entry = next(e for e in report if e["title"] == "freedom of information act 1982")
+    assert entry["year"] == 1982
+    assert entry["mention_count"] == 2  # one tagged + one untagged mention
+    assert entry["cited_by"]["/akn/au/act/1988/119"] == 2
+
+
+def test_self_citation_is_filtered_not_treated_as_candidate():
+    g = LexAuGraph()
+    act = ActNode(frbr_uri="/akn/au/act/2001/50", title="Corporations Act 2001", year=2001)
+    section = SectionNode(
+        eid="sec-1", act_frbr_uri=act.frbr_uri, heading=None, text="...", provision_type="section",
+    )
+    self_ref = RefEdge(
+        source_id=section.node_id,
+        ref_text="Corporations Act 2001",
+        is_cross_act=True,
+        target_href=None,
+        matched_title="corporations act 2001",
+    )
+    data = ActData(act_node=act, sections=[section], defined_terms=[], ref_edges=[self_ref])
+    g.add_act_data(data)
+
+    assert g.graph.out_degree(section.node_id) == 0
+    assert g.citation_stats["untagged"]["self_citation_filtered"] == 1
+    assert g.citation_candidates_report() == []
+
+
+def test_citation_stats_bucket_totals(graph_with_privacy: LexAuGraph):
+    stats = graph_with_privacy.citation_stats
+    # privacy-act-1988.xml fixture: 1 tagged cross-act citation + 1 untagged, both to FOI.
+    assert stats["tagged"]["total"] == 1
+    assert stats["untagged"]["total"] == 1
+
+
+def test_low_confidence_untagged_sample_sorted_shortest_first():
+    g = LexAuGraph()
+    act = ActNode(frbr_uri="/akn/au/act/2001/50", title="Corporations Act 2001", year=2001)
+    section = SectionNode(
+        eid="sec-1", act_frbr_uri=act.frbr_uri, heading=None, text="...", provision_type="section",
+    )
+    refs = [
+        RefEdge(
+            source_id=section.node_id, ref_text="Fair Work Act 2009", is_cross_act=True,
+            target_href=None, matched_title="fair work act 2009",
+        ),
+        RefEdge(
+            source_id=section.node_id, ref_text="Social Security (Administration) Act 1999",
+            is_cross_act=True, target_href=None,
+            matched_title="social security (administration) act 1999",
+        ),
+    ]
+    data = ActData(act_node=act, sections=[section], defined_terms=[], ref_edges=refs)
+    g.add_act_data(data)
+
+    sample = g.low_confidence_untagged_sample(n=1)
+    assert sample == ["fair work act 2009"]

@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1982/3/!main"/>
+          <FRBRuri value="/akn/au/act/1982/3"/>
+          <FRBRdate date="1982-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1982/3/eng@2026-06-04/!main"/>
+          <FRBRuri value="/akn/au/act/1982/3/eng@2026-06-04"/>
+          <FRBRdate date="2026-06-04" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1982/3/eng@2026-06-04/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1982/3/eng@2026-06-04/!main.akn"/>
+          <FRBRdate date="2026-06-22" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-3">
+          <num>3</num>
+          <heading>Object</heading>
+          <content>
+            <p>This Act gives the public a right of access to documents.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>
