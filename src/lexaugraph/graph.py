@@ -19,7 +19,8 @@ class LexAuGraph:
         # Refs that failed to resolve because the target Act hadn't been loaded yet.
         # Retried whenever a new Act's title lands in _title_index, since acts can be
         # added to the graph in any order via repeated add_act_data() calls.
-        self._pending_refs: list[tuple[str, RefEdge, str]] = []  # (title, ref, source_act_frbr_uri)
+        # (title, ref, source_act_frbr_uri, bucket)
+        self._pending_refs: list[tuple[str, RefEdge, str, str]] = []
         self.citation_stats: dict[str, dict[str, int]] = {
             "tagged": {"total": 0, "self_citation_filtered": 0, "resolved": 0, "unresolved": 0},
             "untagged": {"total": 0, "self_citation_filtered": 0, "resolved": 0, "unresolved": 0},
