@@ -33,6 +33,27 @@ def build(
     typer.echo(f"Node types: {graph_stats['node_types']}")
     typer.echo(f"Edge types: {graph_stats['edge_types']}")
 
+    candidates = g.citation_candidates_report()
+    candidates_path = output.parent / "citation_candidates.json"
+    candidates_path.write_text(json.dumps(candidates, indent=2))
+    typer.echo(f"Citation candidates written to {candidates_path} ({len(candidates)} unresolved Acts)")
+
+    for bucket in ("tagged", "untagged"):
+        s = g.citation_stats[bucket]
+        typer.echo(
+            f"{bucket.capitalize()} citations: total={s['total']} "
+            f"self_citation_filtered={s['self_citation_filtered']} "
+            f"resolved={s['resolved']} unresolved={s['unresolved']}"
+        )
+    combined_unresolved = g.citation_stats["tagged"]["unresolved"] + g.citation_stats["untagged"]["unresolved"]
+    typer.echo(f"Combined unresolved citations (written to candidates report): {combined_unresolved}")
+
+    sample = g.low_confidence_untagged_sample(10)
+    if sample:
+        typer.echo("Lowest-confidence untagged matches (for manual eyeballing):")
+        for s in sample:
+            typer.echo(f"  - {s}")
+
 
 @app.command()
 def stats(

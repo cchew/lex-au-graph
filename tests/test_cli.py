@@ -1,0 +1,68 @@
+from __future__ import annotations
+import json
+import shutil
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from lexaugraph.cli import app
+
+FIXTURES = Path(__file__).parent / "fixtures"
+runner = CliRunner()
+
+
+def _make_corpus(tmp_path: Path) -> Path:
+    corpus_dir = tmp_path / "corpus"
+    xml_dir = corpus_dir / "xml"
+    xml_dir.mkdir(parents=True)
+    shutil.copy(FIXTURES / "privacy-act-1988.xml", xml_dir / "privacy-act-1988.xml")
+    shutil.copy(
+        FIXTURES / "freedom-of-information-act-1982.xml",
+        xml_dir / "freedom-of-information-act-1982.xml",
+    )
+    index = {
+        "acts": {
+            "privacy-act-1988": {
+                "name": "Privacy Act 1988",
+                "year": 1988,
+                "number": 119,
+                "effective_date": "2026-06-04",
+                "xml_path": "xml/privacy-act-1988.xml",
+            },
+            "freedom-of-information-act-1982": {
+                "name": "Freedom of Information Act 1982",
+                "year": 1982,
+                "number": 3,
+                "effective_date": "2026-06-04",
+                "xml_path": "xml/freedom-of-information-act-1982.xml",
+            },
+        }
+    }
+    (corpus_dir / "index.json").write_text(json.dumps(index))
+    return corpus_dir
+
+
+def test_build_writes_citation_candidates_json(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    output = tmp_path / "graph.json"
+
+    result = runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(output)])
+
+    assert result.exit_code == 0, result.output
+    candidates_path = tmp_path / "citation_candidates.json"
+    assert candidates_path.exists()
+    candidates = json.loads(candidates_path.read_text())
+    # Both fixture Acts are loaded, so the FOI citations resolve — no unresolved candidates.
+    assert candidates == []
+
+
+def test_build_prints_citation_stats_breakdown(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    output = tmp_path / "graph.json"
+
+    result = runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(output)])
+
+    assert result.exit_code == 0, result.output
+    assert "Tagged citations:" in result.output
+    assert "Untagged citations:" in result.output
+    assert "resolved=1" in result.output
