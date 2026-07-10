@@ -126,6 +126,21 @@ def test_extract_prose_citations_no_match_returns_empty_list():
     assert extract_prose_citations(section) == []
 
 
+def test_extract_prose_citations_matches_title_split_across_inline_runs():
+    # Real corpus text: lex-au's inline-formatting pass (v0.6.0) sometimes puts a
+    # hyphen in its own <i> run, e.g. "Territory (Self<i>-</i><i>Government) Act 1978"
+    # in criminal-code-act-1995.xml. Regression test for the bug: _text_outside_refs
+    # joined text/tail fragments with an artificial space, turning "Self-Government)"
+    # into "Self - Government)" and truncating the match to "Government) Act 1978".
+    section = _section(
+        "<p>See the Australian Capital Territory "
+        "(Self<i>-</i><i>Government) Act 1978</i> for details.</p>"
+    )
+    assert extract_prose_citations(section) == [
+        "Australian Capital Territory (Self-Government) Act 1978"
+    ]
+
+
 def test_extract_prose_citations_matches_curly_apostrophe_title():
     # Real corpus text uses U+2019 (right single quotation mark), not a straight
     # apostrophe, e.g. "Veterans’ Entitlements Act 1986" in social-security-act-1991.xml.

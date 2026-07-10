@@ -4,7 +4,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation.
 
 Retrieval layer of the AU Legislative Intelligence Stack, alongside lex-au-search: sits between [lex-au](https://github.com/cchew/lex-au) (AKN XML corpus) and the search/rules/application layers, providing graph-based definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
-**Status: v0.7.1**
+**Status: v0.7.2**
 
 ## Stack position
 
@@ -78,14 +78,16 @@ Registers four tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.7.2** — 2026-07-10: Fixed `_text_outside_refs` inserting an artificial space between adjacent inline-formatting runs (e.g. a hyphen split into its own `<i>` element, as in "Self<i>-</i><i>Government)</i>"), which fractured the word at that boundary and truncated the citation match. 106 tests.
 - **v0.7.1** — 2026-07-10: Fixed `_CITATION_PATTERN` dropping the leading word(s) of titles containing a curly apostrophe (U+2019, e.g. "Veterans’ Entitlements Act 1986") — the regex word-char class only allowed the straight apostrophe. 105 tests.
 - **v0.7.0** — 2026-07-10: Cross-Act citation resolution and untagged-definition recovery. (1) Fixed a title-normalization bug where 120+ already-tagged `<ref href="">Act Title Year</ref>` citations silently failed to resolve; added a regex pass over untagged prose citations; unresolved citations (Acts not yet in the corpus) are now written to `citation_candidates.json` instead of silently dropped — no stub/placeholder nodes. (2) New `extract-untagged` CLI command backfills untagged prose definitions (no AKN `<term>`/`<def>` markup) into an existing graph via grounded LLM extraction with byte-exact verification against source text. 104 tests.
 - **v0.5.0** — 2026-06-27: XPath extraction over AKN `<term>`/`<def>` markup — 2,395 defined terms (+73% over v0.4.0, up from 1,385).
 - **v0.4.0** — 2026-06-22: First release — corpus loader, graph builder, definition resolver, FastMCP server, Typer CLI.
 
-## Known limits (v0.7.0)
+## Known limits (v0.7.2)
 
 - `<ref>` cross-references and untagged prose citations are both pattern-matched; unusual citation forms may still be missed. `citation_candidates.json` is a best-effort corpus-expansion signal, not a guarantee of completeness.
+- Titles containing a lowercase preposition other than "of"/"and" (e.g. "Participants **in** British Nuclear Tests...") truncate to the portion after the preposition, since those words are deliberately excluded from the connector set to avoid over-matching surrounding prose (see comment above `_TITLE_CONNECTOR` in `citations.py`). A safe fix requires anchoring on `Act|Regulations|Rules <year>` and walking backward through title words, not a same-class one-line patch — deferred.
 - `find_all_definitions` returns results in graph iteration order (non-deterministic across rebuilds if node insertion order changes).
 - Graph is a static snapshot; re-run `lexaugraph build` after corpus updates.
 

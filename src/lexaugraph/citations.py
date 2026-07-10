@@ -74,4 +74,9 @@ def _text_outside_refs(section_el: ET._Element) -> str:
                 parts.append(child.tail)
 
     walk(section_el, False)
-    return " ".join(" ".join(parts).split())
+    # Concatenate with no separator: adjacent inline-formatting runs (e.g. a hyphen
+    # split into its own <i> element, as in "Self<i>-</i><i>Government)</i>") carry
+    # no whitespace between them in the source, and inserting one here would fracture
+    # the word at that boundary. Any real whitespace is already present inside the
+    # individual text/tail fragments; .split()/" ".join() below just normalizes runs.
+    return " ".join("".join(parts).split())
