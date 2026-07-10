@@ -124,3 +124,14 @@ def test_extract_prose_citations_matches_titles_with_and_connector():
 def test_extract_prose_citations_no_match_returns_empty_list():
     section = _section("<p>This section has no citations at all.</p>")
     assert extract_prose_citations(section) == []
+
+
+def test_extract_prose_citations_matches_curly_apostrophe_title():
+    # Real corpus text uses U+2019 (right single quotation mark), not a straight
+    # apostrophe, e.g. "Veterans’ Entitlements Act 1986" in social-security-act-1991.xml.
+    # Regression test for the bug: the citation pattern's word-char class didn't include
+    # the curly apostrophe, so the match started mid-title at "Entitlements Act 1986".
+    section = _section(
+        "<p>A payment under the Veterans’ Entitlements Act 1986 is exempt.</p>"
+    )
+    assert extract_prose_citations(section) == ["Veterans’ Entitlements Act 1986"]

@@ -15,9 +15,12 @@ _YEAR_PATTERN = re.compile(r"^(.+?)\s+(\d{4})$")
 # over-matches to "Nothing in the Fair Work Act 2009" instead of just "Fair Work Act 2009"
 # once "in"/"the" are added to the connector set).
 _TITLE_CONNECTOR = r"(?:of|and)"
-_TITLE_WORD = r"(?:[A-Z(][\w'&()\-]*|" + _TITLE_CONNECTOR + r")"
+# Includes U+2019 (curly apostrophe) alongside the straight one: real corpus text uses
+# the typographic quote in titles like "Veterans’ Entitlements Act 1986", and without it
+# in this class the match breaks mid-word and drops the leading word(s) of the title.
+_TITLE_WORD = r"(?:[A-Z(][\w'’&()\-]*|" + _TITLE_CONNECTOR + r")"
 _CITATION_PATTERN = re.compile(
-    r"\b[A-Z(][\w'&()\-]*(?:\s+" + _TITLE_WORD + r"){0,9}\s+(?:Act|Regulations?|Rules?)\s+\d{4}\b"
+    r"\b[A-Z(][\w'’&()\-]*(?:\s+" + _TITLE_WORD + r"){0,9}\s+(?:Act|Regulations?|Rules?)\s+\d{4}\b"
 )
 
 
