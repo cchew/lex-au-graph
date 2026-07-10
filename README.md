@@ -4,7 +4,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation.
 
 Retrieval layer of the AU Legislative Intelligence Stack, alongside lex-au-search: sits between [lex-au](https://github.com/cchew/lex-au) (AKN XML corpus) and the search/rules/application layers, providing graph-based definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
-**Status: v0.6.0**
+**Status: v0.7.0**
 
 ## Stack position
 
@@ -51,6 +51,8 @@ pip install -e ".[dev]"
 
 ```bash
 # Build the graph from a lex-au corpus
+# Also writes citation_candidates.json (Acts cited but not yet in the corpus)
+# and prints a tagged/untagged citation resolution stats breakdown
 lexaugraph build --corpus-dir /path/to/lex-au/corpus/
 
 # Print graph statistics
@@ -58,6 +60,9 @@ lexaugraph stats
 
 # Resolve a defined term
 lexaugraph resolve --term "personal information" --act "/akn/au/act/1988/119"
+
+# Backfill untagged prose definitions for one Act via grounded LLM extraction
+lexaugraph extract-untagged --xml /path/to/act.xml --act-frbr-uri "/akn/au/act/1988/119"
 
 # Start the MCP server
 lexaugraph serve
@@ -73,13 +78,13 @@ Registers four tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
-- **v0.6.0** — 2026-06-29: Two new MCP tools — `find_all_definitions` (cross-Act term search) and `get_act_terms` (alphabetical term index per Act). 52 tests.
+- **v0.7.0** — 2026-07-10: Cross-Act citation resolution and untagged-definition recovery. (1) Fixed a title-normalization bug where 120+ already-tagged `<ref href="">Act Title Year</ref>` citations silently failed to resolve; added a regex pass over untagged prose citations; unresolved citations (Acts not yet in the corpus) are now written to `citation_candidates.json` instead of silently dropped — no stub/placeholder nodes. (2) New `extract-untagged` CLI command backfills untagged prose definitions (no AKN `<term>`/`<def>` markup) into an existing graph via grounded LLM extraction with byte-exact verification against source text. 104 tests.
 - **v0.5.0** — 2026-06-27: XPath extraction over AKN `<term>`/`<def>` markup — 2,395 defined terms (+73% over v0.4.0, up from 1,385).
 - **v0.4.0** — 2026-06-22: First release — corpus loader, graph builder, definition resolver, FastMCP server, Typer CLI.
 
-## Known limits (v0.6.0)
+## Known limits (v0.7.0)
 
-- `<ref>` cross-references are pattern-matched; unusual citation forms may be missed.
+- `<ref>` cross-references and untagged prose citations are both pattern-matched; unusual citation forms may still be missed. `citation_candidates.json` is a best-effort corpus-expansion signal, not a guarantee of completeness.
 - `find_all_definitions` returns results in graph iteration order (non-deterministic across rebuilds if node insertion order changes).
 - Graph is a static snapshot; re-run `lexaugraph build` after corpus updates.
 
