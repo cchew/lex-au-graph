@@ -236,3 +236,20 @@ def test_count_valid_defined_terms_excludes_terms_missing_definition_text():
     g.add_act_data(act)
     resolver = DefinitionResolver(g)
     assert resolver.count_valid_defined_terms() == 1
+
+
+def test_count_valid_defined_terms_excludes_terms_missing_section_eid():
+    g = LexAuGraph()
+    act = _make_act("/akn/au/act/2001/1", "Act One", [_make_term("valid term", "valid term", "/akn/au/act/2001/1")])
+    act.defined_terms.append(
+        DefinedTermNode(
+            term="broken term",
+            display_term="broken term",
+            act_frbr_uri="/akn/au/act/2001/1",
+            section_eid="",
+            definition_text="broken term means something.",
+        )
+    )
+    g.add_act_data(act)
+    resolver = DefinitionResolver(g)
+    assert resolver.count_valid_defined_terms() == 1
