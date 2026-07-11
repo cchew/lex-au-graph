@@ -208,3 +208,31 @@ def test_list_multi_act_terms_default_min_acts_is_three(multi_act_resolver: Defi
     default_results = multi_act_resolver.list_multi_act_terms()
     explicit_results = multi_act_resolver.list_multi_act_terms(min_acts=3)
     assert {r.term for r in default_results} == {r.term for r in explicit_results}
+
+
+def test_count_acts_counts_act_nodes_only(multi_act_resolver: DefinitionResolver):
+    # multi_act_resolver fixture loads 5 distinct Acts (Privacy Act 1988 is added twice,
+    # once per add_act_data call, but act nodes are keyed by frbr_uri so it's one node)
+    assert multi_act_resolver.count_acts() == 5
+
+
+def test_count_valid_defined_terms_counts_all_valid_term_nodes(multi_act_resolver: DefinitionResolver):
+    # 3 "personal information" + 2 "australian resident" + 3 "does not" = 8 defined_term nodes
+    assert multi_act_resolver.count_valid_defined_terms() == 8
+
+
+def test_count_valid_defined_terms_excludes_terms_missing_definition_text():
+    g = LexAuGraph()
+    act = _make_act("/akn/au/act/2001/1", "Act One", [_make_term("valid term", "valid term", "/akn/au/act/2001/1")])
+    act.defined_terms.append(
+        DefinedTermNode(
+            term="broken term",
+            display_term="broken term",
+            act_frbr_uri="/akn/au/act/2001/1",
+            section_eid="sec-1",
+            definition_text="",
+        )
+    )
+    g.add_act_data(act)
+    resolver = DefinitionResolver(g)
+    assert resolver.count_valid_defined_terms() == 1
