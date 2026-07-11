@@ -1,22 +1,16 @@
 # lex-au-graph
 
-Cross-reference knowledge graph over Australian Commonwealth legislation.
-
-Retrieval layer of the AU Legislative Intelligence Stack, alongside lex-au-search: sits between [lex-au](https://github.com/cchew/lex-au) (AKN XML corpus) and the search/rules/application layers, providing graph-based definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
+Cross-reference knowledge graph over Australian Commonwealth legislation, for definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
 **Status: v0.7.2**
 
-## Stack position
+## Uses / used by
 
-```
-Corpus:       lex-au         — AKN 3.0 XML corpus
-Retrieval:    lex-au-search  — hybrid vector search + MCP
-              lex-au-graph   — cross-reference graph + definition resolution (this repo)
-Applications: ClauseKit       — machine-readable rule extraction
-              term-comparison — IM2026 definition-comparison bot, built directly on this repo's DefinitionResolver
-```
+- **Depends on:** [lex-au](https://github.com/cchew/lex-au) (AKN 3.0 XML corpus as the input)
+- **Related:** [lex-au-search](https://github.com/cchew/lex-au-search) (hybrid vector search + MCP; for queries about what a term means or how it's defined across Acts)
+- **Used by:** [ClauseKit](https://github.com/cchew/clause-kit) (run claims against extracted legislation rules, grounded back to source clauses), term-comparison (compare how terms are defined across Acts)
 
-Call-order note: for queries about what a term means or how it's defined across Acts, this repo is the authoritative source — check it before or alongside lex-au-search, which can otherwise match the wrong Act's use of a homonymous term.
+Full stack map: [lex-au-search's `STACK.md`](https://github.com/cchew/lex-au-search/blob/main/STACK.md) and [lex-au's `FUTURE.md`](https://github.com/cchew/lex-au/blob/main/FUTURE.md).
 
 ## What it does
 
@@ -27,10 +21,10 @@ Builds a directed graph over the lex-au AKN corpus:
 
 Exposes four MCP tools:
 
-- `resolve_definition(term, act_frbr_uri)` — canonical definition text and section citation for a defined term within an Act
-- `cross_references(eid, act_frbr_uri)` — all outgoing cross-references from a section
-- `find_all_definitions(term)` — all definitions of a term across all loaded Acts (useful when the Act is unknown or a term is defined in multiple Acts)
-- `get_act_terms(act_frbr_uri)` — all defined terms in an Act, sorted alphabetically
+- `resolve_definition(term, act_frbr_uri)` - canonical definition text and section citation for a defined term within an Act
+- `cross_references(eid, act_frbr_uri)` - all outgoing cross-references from a section
+- `find_all_definitions(term)` - all definitions of a term across all loaded Acts (useful when the Act is unknown or a term is defined in multiple Acts)
+- `get_act_terms(act_frbr_uri)` - all defined terms in an Act, sorted alphabetically
 
 ## Motivation
 
@@ -78,19 +72,20 @@ Registers four tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
-- **v0.7.2** — 2026-07-10: Fixed `_text_outside_refs` inserting an artificial space between adjacent inline-formatting runs (e.g. a hyphen split into its own `<i>` element, as in "Self<i>-</i><i>Government)</i>"), which fractured the word at that boundary and truncated the citation match. 106 tests.
-- **v0.7.1** — 2026-07-10: Fixed `_CITATION_PATTERN` dropping the leading word(s) of titles containing a curly apostrophe (U+2019, e.g. "Veterans’ Entitlements Act 1986") — the regex word-char class only allowed the straight apostrophe. 105 tests.
-- **v0.7.0** — 2026-07-10: Cross-Act citation resolution and untagged-definition recovery. (1) Fixed a title-normalization bug where 120+ already-tagged `<ref href="">Act Title Year</ref>` citations silently failed to resolve; added a regex pass over untagged prose citations; unresolved citations (Acts not yet in the corpus) are now written to `citation_candidates.json` instead of silently dropped — no stub/placeholder nodes. (2) New `extract-untagged` CLI command backfills untagged prose definitions (no AKN `<term>`/`<def>` markup) into an existing graph via grounded LLM extraction with byte-exact verification against source text. 104 tests.
-- **v0.5.0** — 2026-06-27: XPath extraction over AKN `<term>`/`<def>` markup — 2,395 defined terms (+73% over v0.4.0, up from 1,385).
-- **v0.4.0** — 2026-06-22: First release — corpus loader, graph builder, definition resolver, FastMCP server, Typer CLI.
+- **v0.7.2** - Fixed inline-formatting space bug that truncated citation matches.
+- **v0.7.1** - Fixed citation pattern dropping leading words on curly-apostrophe titles.
+- **v0.7.0** - Cross-Act citation resolution; untagged-definition recovery via grounded LLM extraction.
+- **v0.5.0** - XPath extraction over AKN `<term>`/`<def>` markup, 2,395 defined terms.
+- **v0.4.0** - First release - corpus loader, graph builder, definition resolver, FastMCP server, Typer CLI.
 
-## Known limits (v0.7.2)
+## Known limits
 
+- `resolve_definition`/`find_all_definitions` return nothing for a term whose definiendum is bold/italic-formatted in the source DOCX - lex-au's term detection misses those (~46% of dictionary-style definitions corpus-wide). See [lex-au's Known limits](https://github.com/cchew/lex-au#known-limits).
 - `<ref>` cross-references and untagged prose citations are both pattern-matched; unusual citation forms may still be missed. `citation_candidates.json` is a best-effort corpus-expansion signal, not a guarantee of completeness.
-- Titles containing a lowercase preposition other than "of"/"and" (e.g. "Participants **in** British Nuclear Tests...") truncate to the portion after the preposition, since those words are deliberately excluded from the connector set to avoid over-matching surrounding prose (see comment above `_TITLE_CONNECTOR` in `citations.py`). A safe fix requires anchoring on `Act|Regulations|Rules <year>` and walking backward through title words, not a same-class one-line patch — deferred.
+- Titles containing a lowercase preposition other than "of"/"and" (e.g. "Participants **in** British Nuclear Tests...") truncate to the portion after the preposition, since those words are deliberately excluded from the connector set to avoid over-matching surrounding prose (see comment above `_TITLE_CONNECTOR` in `citations.py`). A safe fix requires anchoring on `Act|Regulations|Rules <year>` and walking backward through title words, not a same-class one-line patch - deferred.
 - `find_all_definitions` returns results in graph iteration order (non-deterministic across rebuilds if node insertion order changes).
 - Graph is a static snapshot; re-run `lexaugraph build` after corpus updates.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
