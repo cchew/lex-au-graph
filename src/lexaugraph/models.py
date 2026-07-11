@@ -63,3 +63,10 @@ class DefinitionResult:
     act_frbr_uri: str
     section_eid: str
     act_title: str
+
+
+@dataclass
+class MultiActTermSummary:
+    term: str
+    display_term: str
+    act_count: int

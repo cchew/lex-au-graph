@@ -1,8 +1,14 @@
 from __future__ import annotations
+import re
 from typing import Any, Optional
 
 from .graph import LexAuGraph
-from .models import DefinitionResult
+from .models import DefinitionResult, MultiActTermSummary
+
+_JUNK_TERM_PATTERN = re.compile(
+    r"^(and|or|but|the|of|in|on|at|to|for|does not|is not|means|includes?)( .*)?$",
+    re.IGNORECASE,
+)
 
 
 class DefinitionResolver:
@@ -88,3 +94,40 @@ class DefinitionResolver:
                 "section_eid": data.get("section_eid", ""),
             })
         return sorted(results, key=lambda r: r["term"])
+
+    def list_multi_act_terms(self, min_acts: int = 3) -> list[MultiActTermSummary]:
+        """Group defined_term nodes by term across all Acts, for the browse-list UI.
+
+        Applies a display-only junk-filter heuristic (stopword/fragment pattern, or
+        shorter than 4 chars) to drop obvious extraction fragments like "and" or "does
+        not". This does not fix the underlying extraction — real extraction-quality
+        fixes belong in lex-au, alongside the "Term/def structured-list gap" style
+        entries in lex-au/FUTURE.md, if the noise turns out to matter beyond this UI.
+        """
+        groups: dict[str, dict[str, Any]] = {}
+        for _node_id, data in self._graph.graph.nodes(data=True):
+            if data.get("type") != "defined_term":
+                continue
+            def_text = data.get("definition_text")
+            section_eid = data.get("section_eid")
+            if not def_text or not section_eid:
+                continue
+            term = data.get("term", "")
+            entry = groups.setdefault(
+                term, {"display_term": data.get("display_term", term), "acts": set()}
+            )
+            entry["acts"].add(data.get("act_frbr_uri", ""))
+
+        summaries = []
+        for term, info in groups.items():
+            act_count = len(info["acts"])
+            if act_count < min_acts:
+                continue
+            if len(term) < 4 or _JUNK_TERM_PATTERN.match(term):
+                continue
+            summaries.append(
+                MultiActTermSummary(
+                    term=term, display_term=info["display_term"], act_count=act_count
+                )
+            )
+        return sorted(summaries, key=lambda s: -s.act_count)
