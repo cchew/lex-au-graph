@@ -131,3 +131,18 @@ class DefinitionResolver:
                 )
             )
         return sorted(summaries, key=lambda s: -s.act_count)
+
+    def count_acts(self) -> int:
+        return sum(
+            1 for _node_id, data in self._graph.graph.nodes(data=True)
+            if data.get("type") == "act"
+        )
+
+    def count_valid_defined_terms(self) -> int:
+        count = 0
+        for _node_id, data in self._graph.graph.nodes(data=True):
+            if data.get("type") != "defined_term":
+                continue
+            if data.get("definition_text") and data.get("section_eid"):
+                count += 1
+        return count
