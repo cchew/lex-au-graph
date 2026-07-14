@@ -314,7 +314,7 @@ from pathlib import Path
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.resolver import DefinitionResolver
 
-CORPUS_DIR = Path("../lex-au/repo/corpus/")
+CORPUS_DIR = Path("../../lex-au/repo/corpus/")
 
 
 def main() -> None:
