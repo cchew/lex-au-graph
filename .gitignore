@@ -12,3 +12,6 @@ graph.json.bak
 .superpowers/
 .env
 .worktrees/
+
+# Superpowers planning docs live in the EA wrapper repo, not here
+docs/superpowers/
