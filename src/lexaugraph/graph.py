@@ -64,7 +64,11 @@ class LexAuGraph:
             )
             self.graph.add_edge(act.frbr_uri, section.node_id, type="contains")
 
+        term_occurrence_counts: dict[str, int] = {}
         for term in act_data.defined_terms:
+            slug = term.term.replace(" ", "_").replace("-", "_")
+            term_occurrence_counts[slug] = term_occurrence_counts.get(slug, 0) + 1
+            term.occurrence = term_occurrence_counts[slug]
             self.graph.add_node(
                 term.node_id,
                 type="defined_term",

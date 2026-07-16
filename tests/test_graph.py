@@ -65,6 +65,47 @@ def test_defines_edges(graph_with_privacy: LexAuGraph):
     assert edge["type"] == "defines"
 
 
+def test_multi_meaning_terms_survive_as_distinct_nodes():
+    """Same-Act, same-slug terms with genuinely different definition_text
+    (real OPC drafting -- e.g. ITAA 1936's 'exempt income' has 4 distinct
+    meanings) must NOT silently overwrite each other in the graph. Confirmed
+    bug before this fix: add_node's second call with the same node_id
+    overwrites the first's attributes, and the first node is gone."""
+    act = ActNode(frbr_uri="/akn/au/act/1936/27", title="Income Tax Assessment Act 1936", year=1936)
+    section = SectionNode(
+        eid="part-III__sec-23", act_frbr_uri="/akn/au/act/1936/27",
+        heading="Exemptions", text="...",
+    )
+    term_a = DefinedTermNode(
+        term="exempt income", display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27", section_eid="part-III__sec-23",
+        definition_text="income derived from a source outside Australia by a resident",
+    )
+    term_b = DefinedTermNode(
+        term="exempt income", display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27", section_eid="part-III__sec-23",
+        definition_text="a pension, allowance or benefit specified in Schedule 5",
+    )
+    data = ActData(act_node=act, sections=[section], defined_terms=[term_a, term_b], ref_edges=[])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    term_nodes = [
+        n for n, d in g.graph.nodes(data=True)
+        if d.get("type") == "defined_term" and d.get("term") == "exempt income"
+    ]
+    assert len(term_nodes) == 2
+
+    def_texts = {g.graph.nodes[n]["definition_text"] for n in term_nodes}
+    assert "income derived from a source outside Australia by a resident" in def_texts
+    assert "a pension, allowance or benefit specified in Schedule 5" in def_texts
+
+    # occurrence side effect is visible on the caller's objects
+    assert term_a.occurrence == 1
+    assert term_b.occurrence == 2
+
+
 def test_same_act_ref_edge(graph_with_privacy: LexAuGraph):
     src = "/akn/au/act/1988/119#part-I__sec-13"
     tgt = "/akn/au/act/1988/119#part-I__sec-6"
