@@ -31,11 +31,15 @@ class DefinedTermNode:
     act_frbr_uri: str
     section_eid: str
     definition_text: str
+    occurrence: int = 1
 
     @property
     def node_id(self) -> str:
         slug = self.term.replace(" ", "_").replace("-", "_")
-        return f"{self.act_frbr_uri}#term-{slug}"
+        base = f"{self.act_frbr_uri}#term-{slug}"
+        if self.occurrence > 1:
+            return f"{base}__{self.occurrence}"
+        return base
 
 
 @dataclass

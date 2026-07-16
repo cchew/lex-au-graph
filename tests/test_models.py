@@ -25,6 +25,45 @@ def test_defined_term_node_id():
     assert t.node_id == "/akn/au/act/1988/119#term-personal_information"
 
 
+def test_defined_term_node_id_default_occurrence_unchanged():
+    """Default occurrence=1 must produce exactly today's node_id -- no
+    suffix -- so every non-colliding term (the vast majority) is unaffected."""
+    t = DefinedTermNode(
+        term="personal information",
+        display_term="personal information",
+        act_frbr_uri="/akn/au/act/1988/119",
+        section_eid="part-I__sec-6",
+        definition_text="information or an opinion about an identified individual",
+    )
+    assert t.occurrence == 1
+    assert t.node_id == "/akn/au/act/1988/119#term-personal_information"
+
+
+def test_defined_term_node_id_second_occurrence_suffixed():
+    """occurrence=2 appends a __2 suffix, keeping the two nodes distinct."""
+    t = DefinedTermNode(
+        term="exempt income",
+        display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27",
+        section_eid="part-III__sec-23",
+        definition_text="income derived from a source outside Australia by a person who is a resident",
+        occurrence=2,
+    )
+    assert t.node_id == "/akn/au/act/1936/27#term-exempt_income__2"
+
+
+def test_defined_term_node_id_third_occurrence_suffixed():
+    t = DefinedTermNode(
+        term="exempt income",
+        display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27",
+        section_eid="part-III__sec-23",
+        definition_text="a pension, allowance or benefit specified in Schedule 5",
+        occurrence=3,
+    )
+    assert t.node_id == "/akn/au/act/1936/27#term-exempt_income__3"
+
+
 def test_act_data_structure():
     act = ActNode(frbr_uri="/akn/au/act/1988/119", title="Privacy Act 1988", year=1988, compilation_date="2026-06-04")
     data = ActData(act_node=act, sections=[], defined_terms=[], ref_edges=[])
