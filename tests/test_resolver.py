@@ -253,3 +253,39 @@ def test_count_valid_defined_terms_excludes_terms_missing_section_eid():
     g.add_act_data(act)
     resolver = DefinitionResolver(g)
     assert resolver.count_valid_defined_terms() == 1
+
+
+def test_find_all_definitions_returns_every_meaning_after_node_id_fix():
+    """find_all_definitions already iterates every matching graph node --
+    once _add_act_nodes stops overwriting same-slug nodes (Task 2), this
+    returns multiple DefinitionResults with no resolver code change."""
+    from lexaugraph.models import ActNode, SectionNode, DefinedTermNode, ActData
+    from lexaugraph.graph import LexAuGraph
+    from lexaugraph.resolver import DefinitionResolver
+
+    act = ActNode(frbr_uri="/akn/au/act/1936/27", title="Income Tax Assessment Act 1936", year=1936)
+    section = SectionNode(
+        eid="part-III__sec-23", act_frbr_uri="/akn/au/act/1936/27",
+        heading="Exemptions", text="...",
+    )
+    term_a = DefinedTermNode(
+        term="exempt income", display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27", section_eid="part-III__sec-23",
+        definition_text="income derived from a source outside Australia by a resident",
+    )
+    term_b = DefinedTermNode(
+        term="exempt income", display_term="exempt income",
+        act_frbr_uri="/akn/au/act/1936/27", section_eid="part-III__sec-23",
+        definition_text="a pension, allowance or benefit specified in Schedule 5",
+    )
+    data = ActData(act_node=act, sections=[section], defined_terms=[term_a, term_b], ref_edges=[])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+    resolver = DefinitionResolver(g)
+
+    results = resolver.find_all_definitions("exempt income")
+    assert len(results) == 2
+    def_texts = {r.definition_text for r in results}
+    assert "income derived from a source outside Australia by a resident" in def_texts
+    assert "a pension, allowance or benefit specified in Schedule 5" in def_texts
