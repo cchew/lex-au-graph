@@ -72,6 +72,7 @@ Registers four tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.7.3** - Fixed node_id collisions: same-Act terms with genuinely distinct meanings no longer silently overwrite each other (706 of 746 known collision pairs now survive as distinct nodes).
 - **v0.7.2** - Fixed inline-formatting space bug that truncated citation matches.
 - **v0.7.1** - Fixed citation pattern dropping leading words on curly-apostrophe titles.
 - **v0.7.0** - Cross-Act citation resolution; untagged-definition recovery via grounded LLM extraction.
