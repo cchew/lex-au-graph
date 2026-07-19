@@ -57,9 +57,9 @@ def test_normalize_title_is_idempotent():
 
 
 def test_normalize_title_normalizes_curly_apostrophe():
-    # ' = right single quotation mark (curly apostrophe), as may appear in
-    # some AKN XML sources for titles like "Veterans' Entitlements Act 1986"
-    curly = "the Veterans' Entitlements Act 1986"
+    # ’ = right single quotation mark (curly apostrophe), as may appear in
+    # some AKN XML sources for titles like "Veterans’ Entitlements Act 1986"
+    curly = "the Veterans’ Entitlements Act 1986"
     straight = "the Veterans' Entitlements Act 1986"
     assert normalize_title(curly) == normalize_title(straight)
     assert normalize_title(curly) == ("veterans' entitlements act 1986", 1986)
@@ -149,13 +149,13 @@ def test_extract_prose_citations_matches_title_split_across_inline_runs():
 
 def test_extract_prose_citations_matches_curly_apostrophe_title():
     # Real corpus text uses U+2019 (right single quotation mark), not a straight
-    # apostrophe, e.g. "Veterans' Entitlements Act 1986" in social-security-act-1991.xml.
+    # apostrophe, e.g. "Veterans’ Entitlements Act 1986" in social-security-act-1991.xml.
     # Regression test for the bug: the citation pattern's word-char class didn't include
     # the curly apostrophe, so the match started mid-title at "Entitlements Act 1986".
     section = _section(
-        "<p>A payment under the Veterans' Entitlements Act 1986 is exempt.</p>"
+        "<p>A payment under the Veterans’ Entitlements Act 1986 is exempt.</p>"
     )
-    assert extract_prose_citations(section) == ["Veterans' Entitlements Act 1986"]
+    assert extract_prose_citations(section) == ["Veterans’ Entitlements Act 1986"]
 
 
 # --- extract_intra_act_citations ---
