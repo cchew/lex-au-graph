@@ -45,7 +45,7 @@ def test_contains_edges(graph_with_privacy: LexAuGraph):
     act_id = "/akn/au/act/1988/119"
     sec_id = "/akn/au/act/1988/119#part-I__sec-6"
     assert graph_with_privacy.graph.has_edge(act_id, sec_id)
-    edge = graph_with_privacy.graph.edges[act_id, sec_id]
+    edge = graph_with_privacy.graph.edges[act_id, sec_id, "contains"]
     assert edge["type"] == "contains"
 
 
@@ -61,7 +61,7 @@ def test_defines_edges(graph_with_privacy: LexAuGraph):
     sec_id = "/akn/au/act/1988/119#part-I__sec-6"
     term_id = "/akn/au/act/1988/119#term-personal_information"
     assert graph_with_privacy.graph.has_edge(sec_id, term_id)
-    edge = graph_with_privacy.graph.edges[sec_id, term_id]
+    edge = graph_with_privacy.graph.edges[sec_id, term_id, "defines"]
     assert edge["type"] == "defines"
 
 
@@ -110,8 +110,50 @@ def test_same_act_ref_edge(graph_with_privacy: LexAuGraph):
     src = "/akn/au/act/1988/119#part-I__sec-13"
     tgt = "/akn/au/act/1988/119#part-I__sec-6"
     assert graph_with_privacy.graph.has_edge(src, tgt)
-    edge = graph_with_privacy.graph.edges[src, tgt]
+    edge = graph_with_privacy.graph.edges[src, tgt, "ref"]
     assert edge["type"] == "ref"
+
+
+def test_defines_and_tagged_same_act_ref_to_same_term_coexist_without_crash():
+    """Real-corpus bug (74 instances): a section that *defines* a term also
+    carries an inline tagged <ref href="#term-X"> back to that same term, so the
+    ref resolves to the exact same (section_id, term_node_id) pair the defines
+    edge already occupies. On a plain DiGraph the second edge silently clobbered
+    the first (data corruption); after Task 5's weight-tracking fix it crashed
+    with KeyError: 'weight'. With a MultiDiGraph keyed per relationship type,
+    both edges must coexist as distinct parallel edges."""
+    act = ActNode(frbr_uri="/akn/au/act/2010/7", title="Collision Act 2010", year=2010)
+    section = SectionNode(
+        eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...",
+    )
+    term = DefinedTermNode(
+        term="vclp", display_term="VCLP",
+        act_frbr_uri=act.frbr_uri, section_eid="part-I__sec-6",
+        definition_text="a venture capital limited partnership",
+    )
+    # Tagged same-Act ref from the defining section back to the term it defines.
+    # target_href="#term-vclp" resolves to f"{act_frbr_uri}#term-vclp" == term.node_id.
+    ref = RefEdge(
+        source_id=section.node_id, ref_text="VCLP", is_cross_act=False,
+        target_href="#term-vclp", matched_title=None, matched_section=None,
+    )
+    data = ActData(act_node=act, sections=[section], defined_terms=[term], ref_edges=[ref])
+
+    g = LexAuGraph()
+    g.add_act_data(data)  # must not raise
+
+    src = section.node_id
+    tgt = term.node_id
+    # (a) both edges survive as distinct parallel edges keyed by type
+    assert g.graph.has_edge(src, tgt, key="defines")
+    assert g.graph.has_edge(src, tgt, key="ref")
+    # (b)/(c) each carries its own correct type attribute
+    assert g.graph.edges[src, tgt, "defines"]["type"] == "defines"
+    ref_edge = g.graph.edges[src, tgt, "ref"]
+    assert ref_edge["type"] == "ref"
+    # (d) the ref edge got weight=1 and the expected ref_texts
+    assert ref_edge["weight"] == 1
+    assert ref_edge["ref_texts"] == ["VCLP"]
 
 
 def test_single_ref_between_pair_gets_weight_one():
@@ -127,7 +169,7 @@ def test_single_ref_between_pair_gets_weight_one():
     g = LexAuGraph()
     g.add_act_data(data)
 
-    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
     assert edge["weight"] == 1
     assert edge["ref_texts"] == ["section 6"]
 
@@ -149,7 +191,7 @@ def test_repeated_refs_between_same_pair_increment_weight_not_overwrite():
     g = LexAuGraph()
     g.add_act_data(data)
 
-    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
     assert edge["weight"] == 3
     assert edge["ref_texts"] == ["section 6", "s 6", "subsection 6(2)"]
 
@@ -167,7 +209,7 @@ def test_repeated_pending_refs_to_same_target_increment_weight_on_retry(graph_wi
 
     src = "/akn/au/act/1988/119#part-I__sec-13"
     tgt = "/akn/au/act/1982/3"
-    edge = graph_with_privacy.graph.edges[src, tgt]
+    edge = graph_with_privacy.graph.edges[src, tgt, "ref"]
     assert edge["weight"] == 2
     assert len(edge["ref_texts"]) == 2
 
@@ -187,10 +229,22 @@ def test_save_load_roundtrip(graph_with_privacy: LexAuGraph, tmp_path: Path):
     graph_with_privacy.save(path)
     assert path.exists()
     loaded = LexAuGraph.load(path)
+    # MultiDiGraph class is self-described via the "multigraph": true JSON field
+    # and reconstructed by node_link_graph -- no create_using needed.
+    import networkx as nx
+    assert isinstance(loaded.graph, nx.MultiDiGraph)
     assert loaded.graph.number_of_nodes() == graph_with_privacy.graph.number_of_nodes()
     assert loaded.graph.number_of_edges() == graph_with_privacy.graph.number_of_edges()
     # Act node survives roundtrip
     assert "/akn/au/act/1988/119" in loaded.graph.nodes
+    # Keyed edges survive with their per-type attributes intact
+    src = "/akn/au/act/1988/119#part-I__sec-13"
+    tgt = "/akn/au/act/1988/119#part-I__sec-6"
+    assert loaded.graph.has_edge(src, tgt, key="ref")
+    ref_edge = loaded.graph.edges[src, tgt, "ref"]
+    assert ref_edge["type"] == "ref"
+    assert ref_edge["weight"] == graph_with_privacy.graph.edges[src, tgt, "ref"]["weight"]
+    assert ref_edge["ref_texts"] == graph_with_privacy.graph.edges[src, tgt, "ref"]["ref_texts"]
 
 
 def test_get_sections(graph_with_privacy: LexAuGraph):
@@ -227,7 +281,7 @@ def test_add_defined_term_adds_queryable_node_without_touching_act_or_section(
 
     # New defines edge from the section to the new term
     assert graph_with_privacy.graph.has_edge(sec_id, term_id)
-    assert graph_with_privacy.graph.edges[sec_id, term_id]["type"] == "defines"
+    assert graph_with_privacy.graph.edges[sec_id, term_id, "defines"]["type"] == "defines"
 
     # Node/edge counts grew by exactly one node and one edge, no duplication
     assert graph_with_privacy.graph.number_of_nodes() == nodes_before + 1
@@ -257,7 +311,7 @@ def test_tagged_cross_act_ref_resolves_once_both_acts_loaded(graph_with_privacy:
     src = "/akn/au/act/1988/119#part-I__sec-13"
     tgt = "/akn/au/act/1982/3"
     assert graph_with_privacy.graph.has_edge(src, tgt)
-    edge = graph_with_privacy.graph.edges[src, tgt]
+    edge = graph_with_privacy.graph.edges[src, tgt, "ref"]
     assert edge["type"] == "ref"
     assert edge["is_cross_act"] is True
 
@@ -350,7 +404,7 @@ def test_intra_act_ref_resolves_via_section_number_index():
     g.add_act_data(data)
 
     assert g.graph.has_edge(section_13.node_id, section_6.node_id)
-    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
     assert edge["type"] == "ref"
     assert edge["is_cross_act"] is False
 

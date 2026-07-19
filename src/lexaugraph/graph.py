@@ -22,7 +22,7 @@ def _section_number_from_eid(eid: str) -> str | None:
 
 class LexAuGraph:
     def __init__(self) -> None:
-        self.graph: nx.DiGraph = nx.DiGraph()
+        self.graph: nx.MultiDiGraph = nx.MultiDiGraph()
         self._title_index: dict[str, str] = {}
         self._section_number_index: dict[str, dict[str, str]] = {}
         self._citation_candidates: dict[str, dict[str, Any]] = {}
@@ -73,7 +73,7 @@ class LexAuGraph:
                 text=section.text,
                 provision_type=section.provision_type,
             )
-            self.graph.add_edge(act.frbr_uri, section.node_id, type="contains")
+            self.graph.add_edge(act.frbr_uri, section.node_id, key="contains", type="contains")
             section_number = _section_number_from_eid(section.eid)
             if section_number:
                 self._section_number_index.setdefault(section.act_frbr_uri, {})[section_number] = section.node_id
@@ -95,7 +95,7 @@ class LexAuGraph:
             if term.section_eid:
                 section_id = f"{term.act_frbr_uri}#{term.section_eid}"
                 if section_id in self.graph.nodes:
-                    self.graph.add_edge(section_id, term.node_id, type="defines")
+                    self.graph.add_edge(section_id, term.node_id, key="defines", type="defines")
 
     def add_defined_term(self, term: DefinedTermNode) -> None:
         """Add a single verified defined term without re-adding act/section nodes.
@@ -114,7 +114,7 @@ class LexAuGraph:
         )
         section_id = f"{term.act_frbr_uri}#{term.section_eid}"
         if section_id in self.graph.nodes:
-            self.graph.add_edge(section_id, term.node_id, type="defines")
+            self.graph.add_edge(section_id, term.node_id, key="defines", type="defines")
 
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node
@@ -124,14 +124,15 @@ class LexAuGraph:
                 self._add_or_increment_ref_edge(ref.source_id, target_id, ref)
 
     def _add_or_increment_ref_edge(self, source_id: str, target_id: str, ref: RefEdge) -> None:
-        if self.graph.has_edge(source_id, target_id):
-            edge = self.graph.edges[source_id, target_id]
+        if self.graph.has_edge(source_id, target_id, key="ref"):
+            edge = self.graph.edges[source_id, target_id, "ref"]
             edge["weight"] += 1
             edge["ref_texts"].append(ref.ref_text)
         else:
             self.graph.add_edge(
                 source_id,
                 target_id,
+                key="ref",
                 type="ref",
                 ref_text=ref.ref_text,
                 is_cross_act=ref.is_cross_act,
