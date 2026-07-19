@@ -114,6 +114,64 @@ def test_same_act_ref_edge(graph_with_privacy: LexAuGraph):
     assert edge["type"] == "ref"
 
 
+def test_single_ref_between_pair_gets_weight_one():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    ref = RefEdge(
+        source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="6",
+    )
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=[ref])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    assert edge["weight"] == 1
+    assert edge["ref_texts"] == ["section 6"]
+
+
+def test_repeated_refs_between_same_pair_increment_weight_not_overwrite():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    refs = [
+        RefEdge(source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6"),
+        RefEdge(source_id=section_13.node_id, ref_text="s 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6"),
+        RefEdge(source_id=section_13.node_id, ref_text="subsection 6(2)", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6"),
+    ]
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=refs)
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    assert edge["weight"] == 3
+    assert edge["ref_texts"] == ["section 6", "s 6", "subsection 6(2)"]
+
+
+def test_repeated_pending_refs_to_same_target_increment_weight_on_retry(graph_with_privacy: LexAuGraph):
+    # privacy-act-1988.xml's part-I__sec-13 has both a tagged and an untagged
+    # citation to Freedom of Information Act 1982 (see test_citation_stats_bucket_totals
+    # above: "1 tagged cross-act citation + 1 untagged, both to FOI"). Both queue into
+    # _pending_refs before FOI is loaded (graph_with_privacy only has Privacy Act loaded);
+    # adding FOI here triggers _retry_pending_refs for both. They must accumulate into
+    # ONE weighted edge via _add_or_increment_ref_edge, not the second silently
+    # overwriting the first's ref_text the way a bare add_edge call would.
+    foi_data = parse_act(FIXTURES / "freedom-of-information-act-1982.xml", FOI_INDEX_ENTRY)
+    graph_with_privacy.add_act_data(foi_data)
+
+    src = "/akn/au/act/1988/119#part-I__sec-13"
+    tgt = "/akn/au/act/1982/3"
+    edge = graph_with_privacy.graph.edges[src, tgt]
+    assert edge["weight"] == 2
+    assert len(edge["ref_texts"]) == 2
+
+
 def test_stats_returns_counts(graph_with_privacy: LexAuGraph):
     stats = graph_with_privacy.stats()
     assert stats["nodes"] > 0

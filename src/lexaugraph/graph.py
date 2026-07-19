@@ -121,13 +121,23 @@ class LexAuGraph:
         for ref in act_data.ref_edges:
             target_id = self._resolve_ref(ref, act.frbr_uri, act.title)
             if target_id and target_id in self.graph.nodes:
-                self.graph.add_edge(
-                    ref.source_id,
-                    target_id,
-                    type="ref",
-                    ref_text=ref.ref_text,
-                    is_cross_act=ref.is_cross_act,
-                )
+                self._add_or_increment_ref_edge(ref.source_id, target_id, ref)
+
+    def _add_or_increment_ref_edge(self, source_id: str, target_id: str, ref: RefEdge) -> None:
+        if self.graph.has_edge(source_id, target_id):
+            edge = self.graph.edges[source_id, target_id]
+            edge["weight"] += 1
+            edge["ref_texts"].append(ref.ref_text)
+        else:
+            self.graph.add_edge(
+                source_id,
+                target_id,
+                type="ref",
+                ref_text=ref.ref_text,
+                is_cross_act=ref.is_cross_act,
+                weight=1,
+                ref_texts=[ref.ref_text],
+            )
 
     def _resolve_ref(self, ref: RefEdge, act_frbr_uri: str, act_title: str) -> str | None:
         href = ref.target_href
@@ -186,13 +196,7 @@ class LexAuGraph:
                 still_pending.append((title, ref, source_act_frbr_uri, bucket))
                 continue
             if target_frbr_uri in self.graph.nodes:
-                self.graph.add_edge(
-                    ref.source_id,
-                    target_frbr_uri,
-                    type="ref",
-                    ref_text=ref.ref_text,
-                    is_cross_act=ref.is_cross_act,
-                )
+                self._add_or_increment_ref_edge(ref.source_id, target_frbr_uri, ref)
             self.citation_stats[bucket]["unresolved"] -= 1
             self.citation_stats[bucket]["resolved"] += 1
             self._unrecord_unresolved(title, source_act_frbr_uri)
