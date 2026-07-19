@@ -49,6 +49,7 @@ class RefEdge:
     is_cross_act: bool
     target_href: Optional[str] = None
     matched_title: Optional[str] = None
+    matched_section: Optional[str] = None
 
 
 @dataclass

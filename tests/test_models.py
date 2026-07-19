@@ -97,3 +97,20 @@ def test_ref_edge_matched_title_set_for_untagged_path():
         matched_title="corporations act 2001",
     )
     assert r.matched_title == "corporations act 2001"
+
+
+def test_ref_edge_defaults_matched_section_to_none():
+    r = RefEdge(source_id="/akn/au/act/1988/119#sec-1", ref_text="section 6", is_cross_act=False)
+    assert r.matched_section is None
+
+
+def test_ref_edge_matched_section_set_for_intra_act_path():
+    r = RefEdge(
+        source_id="/akn/au/act/1988/119#sec-13",
+        ref_text="section 6",
+        is_cross_act=False,
+        target_href=None,
+        matched_title=None,
+        matched_section="6",
+    )
+    assert r.matched_section == "6"
