@@ -87,3 +87,44 @@ def test_tagged_ref_text_still_stored_raw_with_the_prefix():
     data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
     tagged_refs = [r for r in data.ref_edges if r.is_cross_act and r.matched_title is None]
     assert any(r.ref_text == "the Freedom of Information Act 1982" for r in tagged_refs)
+
+
+INTRA_ACT_INDEX_ENTRY = {
+    "name": "Sample Act 1999",
+    "year": 1999,
+    "number": 1,
+    "effective_date": "2026-07-18",
+    "xml_path": "xml/intra-act-citation-sample.xml",
+}
+
+
+def test_parse_act_extracts_intra_act_citation():
+    data = parse_act(FIXTURES / "intra-act-citation-sample.xml", INTRA_ACT_INDEX_ENTRY)
+    intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
+    assert any(r.matched_section == "6" and not r.is_cross_act for r in intra_act_refs)
+
+
+def test_intra_act_citation_has_null_target_href_and_matched_title():
+    data = parse_act(FIXTURES / "intra-act-citation-sample.xml", INTRA_ACT_INDEX_ENTRY)
+    intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
+    ref = next(r for r in intra_act_refs if r.ref_text == "section 6")
+    assert ref.target_href is None
+    assert ref.matched_title is None
+    assert ref.is_cross_act is False
+
+
+def test_intra_act_citation_excludes_bare_subsection_and_tagged_ref_text():
+    data = parse_act(FIXTURES / "intra-act-citation-sample.xml", INTRA_ACT_INDEX_ENTRY)
+    intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
+    # "Subsection (2)" (no number) never becomes a match; the tagged <ref>'s
+    # "section 6" text is excluded from prose extraction (already captured by
+    # the existing tagged-ref pass, which sets matched_section=None, not this one).
+    assert len(intra_act_refs) == 3  # "section 6" (x2) + "subsection 6(2)"
+    assert all(r.ref_text != "Subsection (2)" for r in intra_act_refs)
+
+
+def test_subsection_pinpoint_extracts_base_section_number():
+    data = parse_act(FIXTURES / "intra-act-citation-sample.xml", INTRA_ACT_INDEX_ENTRY)
+    intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
+    ref = next(r for r in intra_act_refs if r.ref_text == "subsection 6(2)")
+    assert ref.matched_section == "6"

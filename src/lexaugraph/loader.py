@@ -127,6 +127,19 @@ def _parse_sections(
                 matched_title=title,
             ))
 
+        for raw_match in citations.extract_intra_act_citations(section):
+            section_number = citations.extract_section_number(raw_match)
+            if section_number is None:
+                continue
+            ref_edges.append(RefEdge(
+                source_id=node.node_id,
+                ref_text=raw_match,
+                is_cross_act=False,
+                target_href=None,
+                matched_title=None,
+                matched_section=section_number,
+            ))
+
     return sections, ref_edges
 
 

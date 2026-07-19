@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1999/1/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1"/>
+          <FRBRdate date="1999-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-07-18/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-07-18"/>
+          <FRBRdate date="2026-07-18" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-07-18/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-07-18/!main.akn"/>
+          <FRBRdate date="2026-07-18" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-6">
+          <num>6</num>
+          <heading>Definitions</heading>
+          <content>
+            <p>In this Act, unless the contrary intention appears, terms have their ordinary meaning.</p>
+          </content>
+        </section>
+        <section eId="part-I__sec-13">
+          <num>13</num>
+          <heading>Application</heading>
+          <content>
+            <p>This section applies subject to section 6.</p>
+            <p>Nothing in section 6 limits subsection 6(2).</p>
+            <p>See also <ref href="#part-I__sec-6">section 6</ref> for the relevant definitions.</p>
+            <p>Subsection (2) does not apply.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>
