@@ -10,10 +10,21 @@ from .loader import load_corpus
 from .models import ActData, DefinedTermNode, RefEdge
 
 
+def _section_number_from_eid(eid: str) -> str | None:
+    """Extract the trailing section number from a SectionNode.eid, e.g.
+    'part-II__dvs-1__sec-6AA' -> '6AA'. Returns None for eids with no
+    trailing 'sec-' segment (e.g. schedule provisions)."""
+    last_segment = eid.rsplit("__", 1)[-1]
+    if last_segment.startswith("sec-"):
+        return last_segment[len("sec-"):]
+    return None
+
+
 class LexAuGraph:
     def __init__(self) -> None:
         self.graph: nx.DiGraph = nx.DiGraph()
         self._title_index: dict[str, str] = {}
+        self._section_number_index: dict[str, dict[str, str]] = {}
         self._citation_candidates: dict[str, dict[str, Any]] = {}
         self._untagged_matches: list[str] = []
         # Refs that failed to resolve because the target Act hadn't been loaded yet.
@@ -63,6 +74,9 @@ class LexAuGraph:
                 provision_type=section.provision_type,
             )
             self.graph.add_edge(act.frbr_uri, section.node_id, type="contains")
+            section_number = _section_number_from_eid(section.eid)
+            if section_number:
+                self._section_number_index.setdefault(section.act_frbr_uri, {})[section_number] = section.node_id
 
         term_occurrence_counts: dict[str, int] = {}
         for term in act_data.defined_terms:
@@ -122,6 +136,9 @@ class LexAuGraph:
         if href and href.startswith("/akn/au"):
             return href
         if not ref.is_cross_act:
+            if ref.matched_section:
+                act_index = self._section_number_index.get(act_frbr_uri, {})
+                return act_index.get(ref.matched_section)
             return None
 
         bucket = "untagged" if ref.matched_title else "tagged"

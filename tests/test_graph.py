@@ -276,3 +276,61 @@ def test_low_confidence_untagged_sample_sorted_shortest_first():
 
     sample = g.low_confidence_untagged_sample(n=1)
     assert sample == ["fair work act 2009"]
+
+
+def test_intra_act_ref_resolves_via_section_number_index():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    ref = RefEdge(
+        source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="6",
+    )
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=[ref])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    assert g.graph.has_edge(section_13.node_id, section_6.node_id)
+    edge = g.graph.edges[section_13.node_id, section_6.node_id]
+    assert edge["type"] == "ref"
+    assert edge["is_cross_act"] is False
+
+
+def test_intra_act_ref_to_nonexistent_section_produces_no_edge_not_a_crash():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    ref = RefEdge(
+        source_id=section_13.node_id, ref_text="section 999", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="999",
+    )
+    data = ActData(act_node=act, sections=[section_13], defined_terms=[], ref_edges=[ref])
+
+    g = LexAuGraph()
+    g.add_act_data(data)  # must not raise
+
+    assert g.graph.out_degree(section_13.node_id) == 0
+
+
+def test_section_number_index_is_scoped_per_act():
+    # Two different Acts each have a "section 6" -- an intra-Act ref in one
+    # must never resolve into the other Act's same-numbered section.
+    act_a = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    act_a_sec_6 = SectionNode(eid="sec-6", act_frbr_uri=act_a.frbr_uri, heading=None, text="...")
+    act_a_sec_13 = SectionNode(eid="sec-13", act_frbr_uri=act_a.frbr_uri, heading=None, text="...")
+    ref = RefEdge(
+        source_id=act_a_sec_13.node_id, ref_text="section 6", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="6",
+    )
+    data_a = ActData(act_node=act_a, sections=[act_a_sec_6, act_a_sec_13], defined_terms=[], ref_edges=[ref])
+
+    act_b = ActNode(frbr_uri="/akn/au/act/2001/50", title="Other Act 2001", year=2001)
+    act_b_sec_6 = SectionNode(eid="sec-6", act_frbr_uri=act_b.frbr_uri, heading=None, text="...")
+    data_b = ActData(act_node=act_b, sections=[act_b_sec_6], defined_terms=[], ref_edges=[])
+
+    g = LexAuGraph()
+    g.add_act_data(data_a)
+    g.add_act_data(data_b)
+
+    assert g.graph.has_edge(act_a_sec_13.node_id, act_a_sec_6.node_id)
+    assert not g.graph.has_edge(act_a_sec_13.node_id, act_b_sec_6.node_id)
