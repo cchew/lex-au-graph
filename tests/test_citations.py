@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import lxml.etree as ET
 
-from lexaugraph.citations import extract_prose_citations, is_self_citation, normalize_title
+from lexaugraph.citations import (
+    extract_intra_act_citations,
+    extract_prose_citations,
+    extract_section_number,
+    is_self_citation,
+    normalize_title,
+)
 
 AKN_NS = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
 
@@ -53,7 +59,7 @@ def test_normalize_title_is_idempotent():
 def test_normalize_title_normalizes_curly_apostrophe():
     # ' = right single quotation mark (curly apostrophe), as may appear in
     # some AKN XML sources for titles like "Veterans' Entitlements Act 1986"
-    curly = "the Veterans’ Entitlements Act 1986"
+    curly = "the Veterans' Entitlements Act 1986"
     straight = "the Veterans' Entitlements Act 1986"
     assert normalize_title(curly) == normalize_title(straight)
     assert normalize_title(curly) == ("veterans' entitlements act 1986", 1986)
@@ -143,10 +149,80 @@ def test_extract_prose_citations_matches_title_split_across_inline_runs():
 
 def test_extract_prose_citations_matches_curly_apostrophe_title():
     # Real corpus text uses U+2019 (right single quotation mark), not a straight
-    # apostrophe, e.g. "Veterans’ Entitlements Act 1986" in social-security-act-1991.xml.
+    # apostrophe, e.g. "Veterans' Entitlements Act 1986" in social-security-act-1991.xml.
     # Regression test for the bug: the citation pattern's word-char class didn't include
     # the curly apostrophe, so the match started mid-title at "Entitlements Act 1986".
     section = _section(
-        "<p>A payment under the Veterans’ Entitlements Act 1986 is exempt.</p>"
+        "<p>A payment under the Veterans' Entitlements Act 1986 is exempt.</p>"
     )
-    assert extract_prose_citations(section) == ["Veterans’ Entitlements Act 1986"]
+    assert extract_prose_citations(section) == ["Veterans' Entitlements Act 1986"]
+
+
+# --- extract_intra_act_citations ---
+
+
+def test_intra_act_pattern_matches_section_reference():
+    section = _section("<p>This section applies subject to section 6.</p>")
+    assert extract_intra_act_citations(section) == ["section 6"]
+
+
+def test_intra_act_pattern_matches_abbreviated_s_reference():
+    section = _section("<p>See s 6 for definitions.</p>")
+    assert extract_intra_act_citations(section) == ["s 6"]
+
+
+def test_intra_act_pattern_matches_multi_section_list():
+    section = _section("<p>Sections 26WD and 26WE apply.</p>")
+    assert extract_intra_act_citations(section) == ["Sections 26WD and 26WE"]
+
+
+def test_intra_act_pattern_matches_subsection_pinpoint():
+    section = _section("<p>Subsection 26WD(2) applies.</p>")
+    assert extract_intra_act_citations(section) == ["Subsection 26WD(2)"]
+
+
+def test_intra_act_pattern_excludes_bare_subsection_with_no_number():
+    section = _section("<p>Subsection (2) does not apply.</p>")
+    assert extract_intra_act_citations(section) == []
+
+
+def test_intra_act_pattern_excludes_text_inside_ref_elements():
+    section = _section('<p>See also <ref href="#sec-6">section 6</ref> for definitions.</p>')
+    assert extract_intra_act_citations(section) == []
+
+
+def test_intra_act_pattern_counts_duplicate_mentions():
+    section = _section(
+        "<p>This section applies subject to section 6. "
+        "Nothing in section 6 limits subsection 6(2).</p>"
+    )
+    assert extract_intra_act_citations(section) == ["section 6", "section 6", "subsection 6(2)"]
+
+
+def test_intra_act_pattern_no_match_returns_empty_list():
+    section = _section("<p>This section has no numbered citations at all.</p>")
+    assert extract_intra_act_citations(section) == []
+
+
+# --- extract_section_number ---
+
+
+def test_extract_section_number_from_simple_reference():
+    assert extract_section_number("section 6") == "6"
+
+
+def test_extract_section_number_from_abbreviated_reference():
+    assert extract_section_number("s 26WD") == "26WD"
+
+
+def test_extract_section_number_from_subsection_pinpoint():
+    assert extract_section_number("subsection 26WD(2)") == "26WD"
+
+
+def test_extract_section_number_from_multi_section_list_returns_first_only():
+    # v1 known limitation: only the first section in a list resolves (see plan Design notes).
+    assert extract_section_number("sections 26WD and 26WE") == "26WD"
+
+
+def test_extract_section_number_returns_none_for_no_match():
+    assert extract_section_number("no number here") is None

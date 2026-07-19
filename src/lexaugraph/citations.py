@@ -80,3 +80,34 @@ def _text_outside_refs(section_el: ET._Element) -> str:
     # the word at that boundary. Any real whitespace is already present inside the
     # individual text/tail fragments; .split()/" ".join() below just normalizes runs.
     return " ".join("".join(parts).split())
+
+
+_SECTION_NUM = r"\d+[A-Z]*(?:\([a-zA-Z0-9]+\))*"
+_INTRA_ACT_PATTERN = re.compile(
+    r"\b(?:[Ss]ubsections?|[Ss]ections?|s)\s+"
+    + _SECTION_NUM +
+    r"(?:\s*(?:,|and|to)\s*" + _SECTION_NUM + r")*"
+)
+_SECTION_NUM_PATTERN = re.compile(r"\d+[A-Z]*")
+
+
+def extract_intra_act_citations(section_el: ET._Element) -> list[str]:
+    """Regex-match bare intra-Act section references ('section 26WD', 's 26WD',
+    'sections 26WD and 26WE', 'subsection 26WD(2)') over section text, excluding
+    text inside existing <ref> elements. Bare references with no section number
+    ('subsection (2)', 'this Division') are excluded by design — they identify
+    the current section/container, not a distinct target node (see spec Scope
+    decisions). Duplicate mentions are NOT deduped, matching extract_prose_citations.
+    """
+    text = _text_outside_refs(section_el)
+    return _INTRA_ACT_PATTERN.findall(text)
+
+
+def extract_section_number(match: str) -> Optional[str]:
+    """Pull the bare section number/letter suffix out of a raw intra-Act match,
+    for eId-index lookup in graph.py. For a multi-section list match (e.g.
+    'sections 26WD and 26WE'), returns only the first section number — see
+    plan's Design notes for the v1 scope decision on list citations.
+    """
+    found = _SECTION_NUM_PATTERN.search(match)
+    return found.group(0) if found else None
