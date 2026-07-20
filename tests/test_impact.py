@@ -69,3 +69,34 @@ def test_impacted_by_ignores_non_ref_edges():
     g = nx.MultiDiGraph()
     g.add_edge("Act1", "D", key="contains", type="contains")
     assert impacted_by(g, "D", max_hops=3) == []
+
+
+def test_impacted_by_diamond_picks_max_weight_path():
+    # A cites B (weight 2) and C (weight 1); B cites D (weight 3); C cites D (weight 5).
+    # Two 2-hop paths to A: via B = 2*3=6, via C = 1*5=5. Max wins: 6 (via B).
+    g = nx.MultiDiGraph()
+    _add_ref(g, "A", "B", weight=2, ref_texts=["A cites B"])
+    _add_ref(g, "A", "C", weight=1, ref_texts=["A cites C"])
+    _add_ref(g, "B", "D", weight=3, ref_texts=["B cites D"])
+    _add_ref(g, "C", "D", weight=5, ref_texts=["C cites D"])
+
+    results = impacted_by(g, "D", max_hops=2, decay=0.5)
+
+    by_id = {r.node_id: r for r in results}
+    assert by_id["A"].hop == 2
+    assert by_id["A"].path_weight == pytest.approx(6 * 0.5)
+    assert by_id["A"].ref_texts == ["A cites B"]  # winning path's edge, not the losing one
+
+
+def test_impacted_by_ref_texts_are_the_immediate_citing_edge_not_full_path():
+    # For a hop-2 node, ref_texts is the edge closest to that node's own
+    # citation into the chain, not the edge nearest the amended section.
+    g = nx.MultiDiGraph()
+    _add_ref(g, "A", "B", ref_texts=["under subsection 26WD(2)"])
+    _add_ref(g, "B", "C", ref_texts=["s 6"])
+
+    results = impacted_by(g, "C", max_hops=2)
+
+    by_id = {r.node_id: r for r in results}
+    assert by_id["A"].ref_texts == ["under subsection 26WD(2)"]
+    assert by_id["B"].ref_texts == ["s 6"]
