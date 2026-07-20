@@ -100,3 +100,20 @@ def test_impacted_by_ref_texts_are_the_immediate_citing_edge_not_full_path():
     by_id = {r.node_id: r for r in results}
     assert by_id["A"].ref_texts == ["under subsection 26WD(2)"]
     assert by_id["B"].ref_texts == ["s 6"]
+
+
+def test_impacted_by_cycle_does_not_infinite_loop():
+    # A cites B, B cites A (mutual citation), B cites D. Reverse BFS from D
+    # must terminate: B (hop1) is visited once and never re-expanded when
+    # the A->B edge loops back to it at hop3.
+    g = nx.MultiDiGraph()
+    _add_ref(g, "A", "B", ref_texts=["A cites B"])
+    _add_ref(g, "B", "A", ref_texts=["B cites A"])
+    _add_ref(g, "B", "D", ref_texts=["B cites D"])
+
+    results = impacted_by(g, "D", max_hops=5)
+
+    by_id = {r.node_id: r for r in results}
+    assert set(by_id) == {"A", "B"}
+    assert by_id["B"].hop == 1
+    assert by_id["A"].hop == 2
