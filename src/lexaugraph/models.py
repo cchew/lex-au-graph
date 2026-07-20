@@ -75,3 +75,11 @@ class MultiActTermSummary:
     term: str
     display_term: str
     act_count: int
+
+
+@dataclass
+class ImpactedNode:
+    node_id: str
+    hop: int
+    path_weight: float
+    ref_texts: list[str]

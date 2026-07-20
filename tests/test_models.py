@@ -114,3 +114,17 @@ def test_ref_edge_matched_section_set_for_intra_act_path():
         matched_section="6",
     )
     assert r.matched_section == "6"
+
+
+def test_impacted_node_fields():
+    from lexaugraph.models import ImpactedNode
+    n = ImpactedNode(
+        node_id="/akn/au/act/1988/119#part-I__sec-13",
+        hop=1,
+        path_weight=3.0,
+        ref_texts=["section 6"],
+    )
+    assert n.node_id == "/akn/au/act/1988/119#part-I__sec-13"
+    assert n.hop == 1
+    assert n.path_weight == 3.0
+    assert n.ref_texts == ["section 6"]
