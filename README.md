@@ -2,7 +2,7 @@
 
 Cross-reference knowledge graph over Australian Commonwealth legislation, for definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
-**Status: v0.7.2**
+**Status: v0.8.0**
 
 ## Uses / used by
 
@@ -17,7 +17,7 @@ Full stack map: [lex-au-search's `STACK.md`](https://github.com/cchew/lex-au-sea
 Builds a directed graph over the lex-au AKN corpus:
 
 - **Nodes:** Act, Section, DefinedTerm
-- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act), `defines` (Section→DefinedTerm)
+- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act, weighted by citation frequency), `defines` (Section→DefinedTerm)
 
 Exposes four MCP tools:
 
@@ -72,6 +72,7 @@ Registers four tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.8.0** - Intra-Act section citation extraction (bare section/subsection references, multi-section lists); persistent edge citation-frequency tracking; graph migrated to MultiDiGraph.
 - **v0.7.3** - Fixed node_id collisions: same-Act terms with genuinely distinct meanings no longer silently overwrite each other (706 of 746 known collision pairs now survive as distinct nodes).
 - **v0.7.2** - Fixed inline-formatting space bug that truncated citation matches.
 - **v0.7.1** - Fixed citation pattern dropping leading words on curly-apostrophe titles.
