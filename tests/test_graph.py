@@ -247,6 +247,28 @@ def test_save_load_roundtrip(graph_with_privacy: LexAuGraph, tmp_path: Path):
     assert ref_edge["ref_texts"] == graph_with_privacy.graph.edges[src, tgt, "ref"]["ref_texts"]
 
 
+def test_load_rejects_old_format_digraph(tmp_path: Path):
+    import json
+    import networkx as nx
+
+    old_graph = nx.DiGraph()
+    old_graph.add_node("/akn/au/act/1988/119", type="act", title="Privacy Act 1988")
+    old_graph.add_node(
+        "/akn/au/act/1988/119#part-I__sec-6", type="section", eid="part-I__sec-6"
+    )
+    old_graph.add_edge(
+        "/akn/au/act/1988/119", "/akn/au/act/1988/119#part-I__sec-6", type="contains"
+    )
+    old_format_data = nx.node_link_data(old_graph, edges="edges")
+    assert old_format_data["multigraph"] is False
+
+    path = tmp_path / "graph.json"
+    path.write_text(json.dumps(old_format_data, default=str))
+
+    with pytest.raises(ValueError, match="(?i)rebuild"):
+        LexAuGraph.load(path)
+
+
 def test_get_sections(graph_with_privacy: LexAuGraph):
     sections = graph_with_privacy.get_sections("/akn/au/act/1988/119")
     eids = [s["eid"] for s in sections]

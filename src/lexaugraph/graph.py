@@ -256,6 +256,12 @@ class LexAuGraph:
                 f"Graph file not found: {path}. Run 'lexaugraph build' first."
             )
         data = json.loads(path.read_text())
+        if not data.get("multigraph"):
+            raise ValueError(
+                f"{path} was built with an older single-edge-per-pair graph format "
+                "(pre-MultiDiGraph migration). Rebuild it with 'lexaugraph build' "
+                "before loading with this version of lexaugraph."
+            )
         g = cls()
         g.graph = nx.node_link_graph(data, edges="edges")
         return g
