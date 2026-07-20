@@ -119,7 +119,9 @@ def test_intra_act_citation_excludes_bare_subsection_and_tagged_ref_text():
     # "Subsection (2)" (no number) never becomes a match; the tagged <ref>'s
     # "section 6" text is excluded from prose extraction (already captured by
     # the existing tagged-ref pass, which sets matched_section=None, not this one).
-    assert len(intra_act_refs) == 3  # "section 6" (x2) + "subsection 6(2)"
+    # "section 6" (x2) + "subsection 6(2)" + "Sections 6 and 13" (2 edges: one per
+    # named section) = 5.
+    assert len(intra_act_refs) == 5
     assert all(r.ref_text != "Subsection (2)" for r in intra_act_refs)
 
 
@@ -128,3 +130,16 @@ def test_subsection_pinpoint_extracts_base_section_number():
     intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
     ref = next(r for r in intra_act_refs if r.ref_text == "subsection 6(2)")
     assert ref.matched_section == "6"
+
+
+def test_multi_section_list_citation_produces_one_ref_edge_per_section():
+    data = parse_act(FIXTURES / "intra-act-citation-sample.xml", INTRA_ACT_INDEX_ENTRY)
+    intra_act_refs = [r for r in data.ref_edges if r.matched_section is not None]
+    multi_section_refs = [r for r in intra_act_refs if r.ref_text == "Sections 6 and 13"]
+    assert len(multi_section_refs) == 2
+    assert {r.matched_section for r in multi_section_refs} == {"6", "13"}
+    # Both edges carry the same full ref_text (the raw citing phrase), even
+    # though each targets a different section.
+    assert all(r.ref_text == "Sections 6 and 13" for r in multi_section_refs)
+    assert all(not r.is_cross_act for r in multi_section_refs)
+    assert all(r.target_href is None and r.matched_title is None for r in multi_section_refs)

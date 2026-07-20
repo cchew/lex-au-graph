@@ -6,6 +6,7 @@ from lexaugraph.citations import (
     extract_intra_act_citations,
     extract_prose_citations,
     extract_section_number,
+    extract_section_numbers,
     is_self_citation,
     normalize_title,
 )
@@ -226,3 +227,32 @@ def test_extract_section_number_from_multi_section_list_returns_first_only():
 
 def test_extract_section_number_returns_none_for_no_match():
     assert extract_section_number("no number here") is None
+
+
+# --- extract_section_numbers ---
+
+
+def test_extract_section_numbers_from_simple_reference():
+    assert extract_section_numbers("section 6") == ["6"]
+
+
+def test_extract_section_numbers_from_abbreviated_reference():
+    assert extract_section_numbers("s 26WD") == ["26WD"]
+
+
+def test_extract_section_numbers_from_multi_section_list_returns_all():
+    assert extract_section_numbers("sections 26WD and 26WE") == ["26WD", "26WE"]
+
+
+def test_extract_section_numbers_from_subsection_pinpoint_strips_pinpoint():
+    assert extract_section_numbers("subsection 26WD(2)") == ["26WD"]
+
+
+def test_extract_section_numbers_from_multi_pinpoint_list_strips_each_pinpoint():
+    # Pinpoint subsection suffixes like "(32)" and "(1)" must not be mistaken
+    # for additional cited sections.
+    assert extract_section_numbers("s 2(32) and 6(1)") == ["2", "6"]
+
+
+def test_extract_section_numbers_returns_empty_list_for_no_match():
+    assert extract_section_numbers("no number here") == []

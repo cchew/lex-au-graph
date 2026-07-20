@@ -89,6 +89,7 @@ _INTRA_ACT_PATTERN = re.compile(
     r"(?:\s*(?:,|and|to)\s*" + _SECTION_NUM + r")*"
 )
 _SECTION_NUM_PATTERN = re.compile(r"\d+[A-Z]*")
+_SECTION_NUM_TOKEN_PATTERN = re.compile(_SECTION_NUM)
 
 
 def extract_intra_act_citations(section_el: ET._Element) -> list[str]:
@@ -103,11 +104,24 @@ def extract_intra_act_citations(section_el: ET._Element) -> list[str]:
     return _INTRA_ACT_PATTERN.findall(text)
 
 
+def extract_section_numbers(match: str) -> list[str]:
+    """Pull every section number/letter suffix out of a raw intra-Act match, for
+    multi-section list citations (e.g. 'sections 26WD and 26WE' -> ['26WD', '26WE']).
+    Pinpoint subsection suffixes are stripped per-token the same way
+    extract_section_number strips them for the single-section case (e.g.
+    's 2(32) and 6(1)' -> ['2', '6'], not ['2(32)', '6(1)']). A single-section
+    match, including a pinpoint one, returns a single-element list. Returns []
+    if no section number is found (should not normally occur given
+    _INTRA_ACT_PATTERN's own match requirements)."""
+    tokens = _SECTION_NUM_TOKEN_PATTERN.findall(match)
+    return [token.split("(", 1)[0] for token in tokens]
+
+
 def extract_section_number(match: str) -> Optional[str]:
     """Pull the bare section number/letter suffix out of a raw intra-Act match,
     for eId-index lookup in graph.py. For a multi-section list match (e.g.
     'sections 26WD and 26WE'), returns only the first section number — see
     plan's Design notes for the v1 scope decision on list citations.
     """
-    found = _SECTION_NUM_PATTERN.search(match)
-    return found.group(0) if found else None
+    numbers = extract_section_numbers(match)
+    return numbers[0] if numbers else None
