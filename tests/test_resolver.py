@@ -3,7 +3,7 @@ import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
 from lexaugraph.resolver import DefinitionResolver
-from lexaugraph.models import ActData, ActNode, DefinedTermNode, SectionNode
+from lexaugraph.models import ActData, ActNode, DefinedTermNode, SectionNode, RefEdge
 
 FIXTURES = Path(__file__).parent / "fixtures"
 INDEX_ENTRY = {
@@ -289,3 +289,51 @@ def test_find_all_definitions_returns_every_meaning_after_node_id_fix():
     def_texts = {r.definition_text for r in results}
     assert "income derived from a source outside Australia by a resident" in def_texts
     assert "a pension, allowance or benefit specified in Schedule 5" in def_texts
+
+
+@pytest.fixture()
+def impact_resolver() -> DefinitionResolver:
+    """Small synthetic Act: sec-6 (to be amended) is cited directly by
+    sec-13 (hop 1) and indirectly by sec-20, which cites sec-13 (hop 2).
+    sec-99 cites nothing and is cited by nothing -- the zero-citers case."""
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    sec_amend = SectionNode(eid="sec-6", act_frbr_uri=act.frbr_uri, heading="Amended", text="...")
+    sec_direct = SectionNode(eid="sec-13", act_frbr_uri=act.frbr_uri, heading="Direct citer", text="...")
+    sec_indirect = SectionNode(eid="sec-20", act_frbr_uri=act.frbr_uri, heading="Indirect citer", text="...")
+    sec_untouched = SectionNode(eid="sec-99", act_frbr_uri=act.frbr_uri, heading="Untouched", text="...")
+    refs = [
+        RefEdge(source_id=sec_direct.node_id, ref_text="section 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6"),
+        RefEdge(source_id=sec_indirect.node_id, ref_text="section 13", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="13"),
+    ]
+    data = ActData(
+        act_node=act,
+        sections=[sec_amend, sec_direct, sec_indirect, sec_untouched],
+        defined_terms=[],
+        ref_edges=refs,
+    )
+    g = LexAuGraph()
+    g.add_act_data(data)
+    return DefinitionResolver(g)
+
+
+def test_impacted_by_returns_empty_list_for_zero_citers(impact_resolver: DefinitionResolver):
+    results = impact_resolver.impacted_by("sec-99", "/akn/au/act/1999/1")
+    assert results == []
+
+
+def test_impacted_by_direct_and_indirect_citers(impact_resolver: DefinitionResolver):
+    results = impact_resolver.impacted_by("sec-6", "/akn/au/act/1999/1")
+    by_id = {r["node_id"]: r for r in results}
+    assert by_id["/akn/au/act/1999/1#sec-13"]["hop"] == 1
+    assert by_id["/akn/au/act/1999/1#sec-20"]["hop"] == 2
+    assert by_id["/akn/au/act/1999/1#sec-20"]["path_weight"] == pytest.approx(
+        by_id["/akn/au/act/1999/1#sec-13"]["path_weight"] * 0.5
+    )
+
+
+def test_impacted_by_ref_texts_present(impact_resolver: DefinitionResolver):
+    results = impact_resolver.impacted_by("sec-6", "/akn/au/act/1999/1")
+    by_id = {r["node_id"]: r for r in results}
+    assert by_id["/akn/au/act/1999/1#sec-13"]["ref_texts"] == ["section 6"]

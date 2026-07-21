@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
+from . import impact
 from .graph import LexAuGraph
 from .models import DefinitionResult, MultiActTermSummary
 
@@ -53,6 +54,21 @@ class DefinitionResolver:
                     "is_cross_act": data.get("is_cross_act", False),
                 })
         return results
+
+    def impacted_by(
+        self, eid: str, act_frbr_uri: str, max_hops: int = 3
+    ) -> list[dict[str, Any]]:
+        section_id = f"{act_frbr_uri}#{eid}"
+        nodes = impact.impacted_by(self._graph.graph, section_id, max_hops=max_hops)
+        return [
+            {
+                "node_id": n.node_id,
+                "hop": n.hop,
+                "path_weight": n.path_weight,
+                "ref_texts": n.ref_texts,
+            }
+            for n in nodes
+        ]
 
     def find_all_definitions(self, term: str) -> list[DefinitionResult]:
         term_lower = term.lower().strip()
