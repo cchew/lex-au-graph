@@ -55,6 +55,12 @@ lexaugraph stats
 # Resolve a defined term
 lexaugraph resolve --term "personal information" --act "/akn/au/act/1988/119"
 
+# Precompute PageRank centrality over the ref subgraph, writes centrality.json
+lexaugraph centrality
+
+# Show what's affected if a section changes (reverse-reachability fan-in)
+lexaugraph impact --eid "part-I__sec-6" --act "/akn/au/act/1988/119"
+
 # Backfill untagged prose definitions for one Act via grounded LLM extraction
 lexaugraph extract-untagged --xml /path/to/act.xml --act-frbr-uri "/akn/au/act/1988/119"
 
@@ -68,7 +74,7 @@ lexaugraph serve
 lexaugraph serve --graph graph.json
 ```
 
-Registers four tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
+Registers five tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
 
 ## Versions
 
