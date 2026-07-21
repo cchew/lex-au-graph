@@ -2,7 +2,7 @@
 
 Cross-reference knowledge graph over Australian Commonwealth legislation, for definition resolution and cross-reference traversal that flat vector search cannot reliably handle.
 
-**Status: v0.8.0**
+**Status: v0.10.0**
 
 ## Uses / used by
 
@@ -29,6 +29,10 @@ Exposes four MCP tools:
 ## Motivation
 
 Defined term chains in AU legislation span Acts. "Income support payment" in the Social Security Act 1991, for example, references a definition that in turn cross-references the Superannuation Industry (Supervision) Act 1993. Flat vector search returns sections ranked by semantic similarity but cannot reliably traverse these chains. A graph layer makes them deterministic.
+
+## Linking back to legislation.gov.au
+
+`ActNode.legislation_url` returns a working link to the Act/instrument's real page on legislation.gov.au (e.g. `https://www.legislation.gov.au/C2004A03712/latest/text`), built from `title_id` — an opaque register ID that comes from lex-au's corpus (`index.json`), not from the AKN FRBR URI (the two are unrelated; the FRBR URI's year/number cannot be used to derive `title_id`). Returns `None` if `title_id` wasn't available when the graph was built. Act-level only: legislation.gov.au does not expose stable per-section anchors, so there's no equivalent section-level deep link.
 
 ## Attribution
 
@@ -78,6 +82,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.10.0** - `ActNode.title_id` and `legislation_url` - Act nodes now carry legislation.gov.au's opaque register ID (already present in lex-au's `index.json`, previously dropped by the graph loader) and a ready-to-use deep link (`https://www.legislation.gov.au/{title_id}/latest/text`). Act-level only - legislation.gov.au has no stable per-section anchor scheme (confirmed live: rendered text lives in a client-side EPUB blob with unstable, auto-generated Word bookmark ids, not semantic `#eId`-style anchors).
 - **v0.9.0** - Legislative impact analysis: `impacted_by()` reverse-reachability fan-in ("what's affected if this section changes") and `compute_centrality()` PageRank triage over the ref subgraph. New `centrality`/`impact` CLI commands and `impact_analysis` MCP tool.
 - **v0.8.0** - Intra-Act section citation extraction (bare section/subsection references, multi-section lists); persistent edge citation-frequency tracking; graph migrated to MultiDiGraph.
 - **v0.7.3** - Fixed node_id collisions: same-Act terms with genuinely distinct meanings no longer silently overwrite each other (706 of 746 known collision pairs now survive as distinct nodes).

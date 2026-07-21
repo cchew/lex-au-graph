@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lex-au-graph"
-version = "0.9.0"
+version = "0.10.0"
 description = "Cross-reference knowledge graph over AKN 3.0 XML corpus — retrieval layer of the AU Legislative Intelligence Stack"
 authors = [{name = "Ching Chew", email = "ching.chew@gmail.com"}]
 license = {text = "MIT"}
