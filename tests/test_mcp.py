@@ -84,3 +84,50 @@ def test_get_act_terms_tool_resolver_none():
     mcp_module._resolver = None
     result = mcp_module.get_act_terms_tool("/akn/au/act/1988/119")
     assert "not initialised" in result.lower()
+
+
+def test_impact_analysis_tool_finds_direct_citer():
+    result = mcp_module.impact_analysis_tool("part-I__sec-6", "/akn/au/act/1988/119")
+    assert "part-I__sec-13" in result
+
+
+def test_impact_analysis_tool_no_citers_returns_message():
+    result = mcp_module.impact_analysis_tool("part-I__sec-13", "/akn/au/act/1988/119")
+    assert isinstance(result, str)
+
+
+def test_impact_analysis_tool_resolver_none_returns_error():
+    mcp_module._resolver = None
+    result = mcp_module.impact_analysis_tool("part-I__sec-6", "/akn/au/act/1988/119")
+    assert "not initialised" in result.lower()
+
+
+def test_init_loads_centrality_sidecar_when_present(tmp_path: Path):
+    import json as json_module
+
+    act_data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    g = LexAuGraph()
+    g.add_act_data(act_data)
+    graph_path = tmp_path / "graph.json"
+    g.save(graph_path)
+    (tmp_path / "centrality.json").write_text(
+        json_module.dumps({"/akn/au/act/1988/119#part-I__sec-13": 0.5})
+    )
+
+    mcp_module.init(graph_path)
+
+    result = mcp_module.impact_analysis_tool("part-I__sec-6", "/akn/au/act/1988/119")
+    assert "percentile" in result
+
+
+def test_init_without_centrality_sidecar_omits_percentile(tmp_path: Path):
+    act_data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    g = LexAuGraph()
+    g.add_act_data(act_data)
+    graph_path = tmp_path / "graph.json"
+    g.save(graph_path)
+
+    mcp_module.init(graph_path)
+
+    result = mcp_module.impact_analysis_tool("part-I__sec-6", "/akn/au/act/1988/119")
+    assert "percentile" not in result

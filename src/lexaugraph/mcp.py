@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,9 @@ _resolver: Optional[DefinitionResolver] = None
 def init(graph_path: Path) -> None:
     global _resolver
     graph = LexAuGraph.load(graph_path)
-    _resolver = DefinitionResolver(graph)
+    centrality_path = graph_path.parent / "centrality.json"
+    centrality = json.loads(centrality_path.read_text()) if centrality_path.exists() else None
+    _resolver = DefinitionResolver(graph, centrality=centrality)
 
 
 def resolve_definition_tool(term: str, act_frbr_uri: str) -> str:
@@ -62,6 +65,39 @@ def cross_references(eid: str, act_frbr_uri: str) -> str:
         act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
     """
     return cross_references_tool(eid, act_frbr_uri)
+
+
+def impact_analysis_tool(eid: str, act_frbr_uri: str, max_hops: int = 3) -> str:
+    if _resolver is None:
+        return "Error: graph not initialised. Run `lexaugraph build` first."
+    results = _resolver.impacted_by(eid, act_frbr_uri, max_hops=max_hops)
+    if not results:
+        return f"No sections cite {eid} in {act_frbr_uri} within {max_hops} hops."
+    results = sorted(results, key=lambda r: -r["path_weight"])
+    lines = []
+    for r in results:
+        pct = r.get("centrality_percentile")
+        pct_str = f", centrality: {pct}th percentile" if pct is not None else ""
+        ref_summary = "; ".join(r["ref_texts"])
+        lines.append(
+            f"- {r['node_id']} (hop {r['hop']}, weight {r['path_weight']:.2f}{pct_str}) "
+            f"cites via \"{ref_summary}\""
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def impact_analysis(eid: str, act_frbr_uri: str, max_hops: int = 3) -> str:
+    """List everything that transitively cites a section -- what's affected if it changes.
+
+    Reverse-reachability fan-in: the complement of cross_references' fan-out.
+
+    Args:
+        eid: The section eId (e.g. "part-II__dvs-1__sec-6AA")
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+        max_hops: Maximum reverse-traversal hop depth (default 3)
+    """
+    return impact_analysis_tool(eid, act_frbr_uri, max_hops)
 
 
 def find_all_definitions_tool(term: str) -> str:
