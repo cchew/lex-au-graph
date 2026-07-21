@@ -1,4 +1,5 @@
 from __future__ import annotations
+import bisect
 import networkx as nx
 
 from .models import ImpactedNode
@@ -70,3 +71,18 @@ def compute_centrality(graph: nx.MultiDiGraph) -> dict[str, float]:
     if subgraph.number_of_edges() == 0:
         return {}
     return nx.pagerank(subgraph, weight="weight")
+
+
+def centrality_percentile(centrality: dict[str, float], node_id: str) -> float | None:
+    """Rank-based percentile (0-100) of node_id's PageRank score among all
+    scored nodes. None if node_id has no score -- e.g. a node with no ref
+    edges, or a centrality.json computed before node_id's Act was ingested.
+    """
+    if node_id not in centrality:
+        return None
+    scores = sorted(centrality.values())
+    n = len(scores)
+    if n <= 1:
+        return 100.0
+    rank = bisect.bisect_left(scores, centrality[node_id])
+    return round(rank / (n - 1) * 100, 1)

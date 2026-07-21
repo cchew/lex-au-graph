@@ -2,7 +2,7 @@ from __future__ import annotations
 import networkx as nx
 import pytest
 
-from lexaugraph.impact import impacted_by, compute_centrality
+from lexaugraph.impact import impacted_by, compute_centrality, centrality_percentile
 
 
 def _add_ref(
@@ -151,3 +151,22 @@ def test_compute_centrality_ignores_non_ref_edges():
     g = nx.MultiDiGraph()
     g.add_edge("Act1", "Sec1", key="contains", type="contains")
     assert compute_centrality(g) == {}
+
+
+def test_centrality_percentile_ranks_highest_score_at_100():
+    scores = {"A": 0.1, "B": 0.5, "C": 0.9}
+    assert centrality_percentile(scores, "C") == 100.0
+
+
+def test_centrality_percentile_ranks_lowest_score_at_0():
+    scores = {"A": 0.1, "B": 0.5, "C": 0.9}
+    assert centrality_percentile(scores, "A") == 0.0
+
+
+def test_centrality_percentile_unknown_node_returns_none():
+    scores = {"A": 0.1}
+    assert centrality_percentile(scores, "unknown") is None
+
+
+def test_centrality_percentile_single_node_dict_returns_100():
+    assert centrality_percentile({"A": 0.5}, "A") == 100.0
