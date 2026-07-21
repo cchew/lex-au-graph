@@ -78,6 +78,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.9.0** - Legislative impact analysis: `impacted_by()` reverse-reachability fan-in ("what's affected if this section changes") and `compute_centrality()` PageRank triage over the ref subgraph. New `centrality`/`impact` CLI commands and `impact_analysis` MCP tool.
 - **v0.8.0** - Intra-Act section citation extraction (bare section/subsection references, multi-section lists); persistent edge citation-frequency tracking; graph migrated to MultiDiGraph.
 - **v0.7.3** - Fixed node_id collisions: same-Act terms with genuinely distinct meanings no longer silently overwrite each other (706 of 746 known collision pairs now survive as distinct nodes).
 - **v0.7.2** - Fixed inline-formatting space bug that truncated citation matches.
