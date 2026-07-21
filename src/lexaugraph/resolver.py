@@ -13,8 +13,9 @@ _JUNK_TERM_PATTERN = re.compile(
 
 
 class DefinitionResolver:
-    def __init__(self, graph: LexAuGraph) -> None:
+    def __init__(self, graph: LexAuGraph, centrality: dict[str, float] | None = None) -> None:
         self._graph = graph
+        self._centrality = centrality
 
     def resolve_definition(
         self, term: str, act_frbr_uri: str
@@ -60,15 +61,20 @@ class DefinitionResolver:
     ) -> list[dict[str, Any]]:
         section_id = f"{act_frbr_uri}#{eid}"
         nodes = impact.impacted_by(self._graph.graph, section_id, max_hops=max_hops)
-        return [
-            {
+        results = []
+        for n in nodes:
+            entry: dict[str, Any] = {
                 "node_id": n.node_id,
                 "hop": n.hop,
                 "path_weight": n.path_weight,
                 "ref_texts": n.ref_texts,
             }
-            for n in nodes
-        ]
+            if self._centrality is not None:
+                entry["centrality_percentile"] = impact.centrality_percentile(
+                    self._centrality, n.node_id
+                )
+            results.append(entry)
+        return results
 
     def find_all_definitions(self, term: str) -> list[DefinitionResult]:
         term_lower = term.lower().strip()

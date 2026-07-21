@@ -337,3 +337,22 @@ def test_impacted_by_ref_texts_present(impact_resolver: DefinitionResolver):
     results = impact_resolver.impacted_by("sec-6", "/akn/au/act/1999/1")
     by_id = {r["node_id"]: r for r in results}
     assert by_id["/akn/au/act/1999/1#sec-13"]["ref_texts"] == ["section 6"]
+
+
+def test_impacted_by_annotates_centrality_percentile_when_provided(impact_resolver: DefinitionResolver):
+    scores = {
+        "/akn/au/act/1999/1#sec-13": 0.1,
+        "/akn/au/act/1999/1#sec-20": 0.9,
+    }
+    resolver_with_centrality = DefinitionResolver(impact_resolver._graph, centrality=scores)
+
+    results = resolver_with_centrality.impacted_by("sec-6", "/akn/au/act/1999/1")
+
+    by_id = {r["node_id"]: r for r in results}
+    assert by_id["/akn/au/act/1999/1#sec-20"]["centrality_percentile"] == 100.0
+    assert by_id["/akn/au/act/1999/1#sec-13"]["centrality_percentile"] == 0.0
+
+
+def test_impacted_by_omits_percentile_key_when_no_centrality_provided(impact_resolver: DefinitionResolver):
+    results = impact_resolver.impacted_by("sec-6", "/akn/au/act/1999/1")
+    assert all("centrality_percentile" not in r for r in results)
