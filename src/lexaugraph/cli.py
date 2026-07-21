@@ -67,6 +67,21 @@ def stats(
 
 
 @app.command()
+def centrality(
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+    output: Path = typer.Option(None, "--output", "-o", help="Output path for centrality.json (default: alongside graph.json)"),
+) -> None:
+    """Precompute PageRank centrality over the ref-edge subgraph and write centrality.json."""
+    from .graph import LexAuGraph
+    from .impact import compute_centrality
+    g = LexAuGraph.load(graph)
+    scores = compute_centrality(g.graph)
+    out_path = output if output is not None else graph.parent / "centrality.json"
+    out_path.write_text(json.dumps(scores, indent=2))
+    typer.echo(f"Centrality scores for {len(scores)} nodes written to {out_path}")
+
+
+@app.command()
 def resolve(
     term: str = typer.Option(..., "--term", "-t", help="Defined term to resolve"),
     act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),

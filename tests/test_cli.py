@@ -66,3 +66,18 @@ def test_build_prints_citation_stats_breakdown(tmp_path: Path):
     assert "Tagged citations:" in result.output
     assert "Untagged citations:" in result.output
     assert "resolved=1" in result.output
+
+
+def test_centrality_writes_centrality_json(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, ["centrality", "--graph", str(graph_path)])
+
+    assert result.exit_code == 0, result.output
+    centrality_path = tmp_path / "centrality.json"
+    assert centrality_path.exists()
+    scores = json.loads(centrality_path.read_text())
+    assert len(scores) > 0
+    assert all(isinstance(v, float) for v in scores.values())
