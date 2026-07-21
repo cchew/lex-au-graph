@@ -56,6 +56,7 @@ class LexAuGraph:
             title=act.title,
             year=act.year,
             compilation_date=act.compilation_date,
+            title_id=act.title_id,
         )
         if act.title:
             self._title_index[act.title.lower()] = act.frbr_uri

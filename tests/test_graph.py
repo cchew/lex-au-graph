@@ -11,6 +11,7 @@ INDEX_ENTRY = {
     "number": 119,
     "effective_date": "2026-06-04",
     "xml_path": "xml/privacy-act-1988.xml",
+    "title_id": "C2004A03712",
 }
 
 
@@ -31,6 +32,11 @@ def test_add_act_node(graph_with_privacy: LexAuGraph):
     node = graph_with_privacy.graph.nodes["/akn/au/act/1988/119"]
     assert node["type"] == "act"
     assert node["title"] == "Privacy Act 1988"
+
+
+def test_add_act_node_carries_title_id(graph_with_privacy: LexAuGraph):
+    node = graph_with_privacy.graph.nodes["/akn/au/act/1988/119"]
+    assert node["title_id"] == "C2004A03712"
 
 
 def test_add_section_nodes(graph_with_privacy: LexAuGraph):
@@ -245,6 +251,8 @@ def test_save_load_roundtrip(graph_with_privacy: LexAuGraph, tmp_path: Path):
     assert ref_edge["type"] == "ref"
     assert ref_edge["weight"] == graph_with_privacy.graph.edges[src, tgt, "ref"]["weight"]
     assert ref_edge["ref_texts"] == graph_with_privacy.graph.edges[src, tgt, "ref"]["ref_texts"]
+    # title_id survives the JSON round-trip on the act node
+    assert loaded.graph.nodes["/akn/au/act/1988/119"]["title_id"] == "C2004A03712"
 
 
 def test_load_rejects_old_format_digraph(tmp_path: Path):
