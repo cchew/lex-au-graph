@@ -2,7 +2,7 @@ from __future__ import annotations
 import networkx as nx
 import pytest
 
-from lexaugraph.impact import impacted_by
+from lexaugraph.impact import impacted_by, compute_centrality
 
 
 def _add_ref(
@@ -117,3 +117,37 @@ def test_impacted_by_cycle_does_not_infinite_loop():
     assert set(by_id) == {"A", "B"}
     assert by_id["B"].hop == 1
     assert by_id["A"].hop == 2
+
+
+def test_compute_centrality_ranks_heavily_cited_node_above_leaf():
+    # HUB and LEAF are both pure sinks (no outgoing edges) so neither's rank
+    # drains onward into a downstream funnel -- isolates the in-degree
+    # comparison from PageRank's chain-amplification effect on dangling
+    # nodes (verified empirically: a HUB with an outgoing edge to LEAF
+    # scores *lower* than LEAF, since all of HUB's rank passes through).
+    g = nx.MultiDiGraph()
+    for citer in ["A", "B", "C"]:
+        _add_ref(g, citer, "HUB")
+    _add_ref(g, "X", "LEAF")
+
+    scores = compute_centrality(g)
+
+    assert scores["HUB"] > scores["LEAF"]
+
+
+def test_compute_centrality_is_deterministic():
+    g = nx.MultiDiGraph()
+    _add_ref(g, "A", "B", weight=2)
+    _add_ref(g, "B", "C", weight=1)
+    _add_ref(g, "C", "A", weight=3)
+
+    first = compute_centrality(g)
+    second = compute_centrality(g)
+
+    assert first == second
+
+
+def test_compute_centrality_ignores_non_ref_edges():
+    g = nx.MultiDiGraph()
+    g.add_edge("Act1", "Sec1", key="contains", type="contains")
+    assert compute_centrality(g) == {}

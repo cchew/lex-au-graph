@@ -54,3 +54,19 @@ def impacted_by(
         )
         for n in ordered
     ]
+
+
+def compute_centrality(graph: nx.MultiDiGraph) -> dict[str, float]:
+    """PageRank over the 'ref'-edge subgraph, weighted by citation frequency.
+
+    A static, whole-graph structural-importance ranking -- complementary to
+    impacted_by()'s per-node blast-radius query, not a substitute for it.
+    Precompute once via 'lexaugraph centrality', not per-query.
+    """
+    subgraph = nx.MultiDiGraph()
+    for u, v, data in graph.edges(data=True):
+        if data.get("type") == "ref":
+            subgraph.add_edge(u, v, weight=data.get("weight", 1))
+    if subgraph.number_of_edges() == 0:
+        return {}
+    return nx.pagerank(subgraph, weight="weight")
