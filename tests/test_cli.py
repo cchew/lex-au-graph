@@ -81,3 +81,32 @@ def test_centrality_writes_centrality_json(tmp_path: Path):
     scores = json.loads(centrality_path.read_text())
     assert len(scores) > 0
     assert all(isinstance(v, float) for v in scores.values())
+
+
+def test_impact_prints_impacted_sections(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, [
+        "impact", "--eid", "part-I__sec-6", "--act", "/akn/au/act/1988/119",
+        "--graph", str(graph_path),
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert "part-I__sec-13" in result.output
+
+
+def test_impact_annotates_centrality_percentile_when_sidecar_present(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+    runner.invoke(app, ["centrality", "--graph", str(graph_path)])
+
+    result = runner.invoke(app, [
+        "impact", "--eid", "part-I__sec-6", "--act", "/akn/au/act/1988/119",
+        "--graph", str(graph_path),
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert "percentile" in result.output

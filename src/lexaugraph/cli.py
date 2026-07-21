@@ -191,6 +191,35 @@ def extract_untagged(
 
 
 @app.command()
+def impact(
+    eid: str = typer.Option(..., "--eid", help="Section eId to check impact for"),
+    act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),
+    max_hops: int = typer.Option(3, "--max-hops", help="Maximum reverse-traversal hop depth"),
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+) -> None:
+    """Show what's affected if the given section changes (reverse-reachability fan-in)."""
+    from .graph import LexAuGraph
+    from .resolver import DefinitionResolver
+    g = LexAuGraph.load(graph)
+    centrality_path = graph.parent / "centrality.json"
+    centrality_scores = (
+        json.loads(centrality_path.read_text()) if centrality_path.exists() else None
+    )
+    resolver = DefinitionResolver(g, centrality=centrality_scores)
+    results = resolver.impacted_by(eid, act, max_hops=max_hops)
+    if not results:
+        typer.echo(f"No sections cite {eid} in {act} within {max_hops} hops.")
+        return
+    results.sort(key=lambda r: -r["path_weight"])
+    for r in results:
+        pct = r.get("centrality_percentile")
+        pct_str = f", centrality: {pct}th percentile" if pct is not None else ""
+        typer.echo(f"{r['node_id']} (hop {r['hop']}, weight {r['path_weight']:.2f}{pct_str})")
+        for t in r["ref_texts"]:
+            typer.echo(f"    cites via '{t}'")
+
+
+@app.command()
 def serve(
     graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
 ) -> None:
