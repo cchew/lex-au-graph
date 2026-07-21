@@ -128,3 +128,23 @@ def test_impacted_node_fields():
     assert n.hop == 1
     assert n.path_weight == 3.0
     assert n.ref_texts == ["section 6"]
+
+
+def test_act_node_title_id_defaults_to_none():
+    node = ActNode(frbr_uri="/akn/au/act/1988/119", title="Privacy Act 1988", year=1988)
+    assert node.title_id is None
+
+
+def test_act_node_legislation_url_none_when_no_title_id():
+    node = ActNode(frbr_uri="/akn/au/act/1988/119", title="Privacy Act 1988", year=1988)
+    assert node.legislation_url is None
+
+
+def test_act_node_legislation_url_built_from_title_id():
+    node = ActNode(
+        frbr_uri="/akn/au/act/1988/119",
+        title="Privacy Act 1988",
+        year=1988,
+        title_id="C2004A03712",
+    )
+    assert node.legislation_url == "https://www.legislation.gov.au/C2004A03712/latest/text"

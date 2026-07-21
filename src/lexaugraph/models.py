@@ -9,6 +9,13 @@ class ActNode:
     title: str
     year: int
     compilation_date: Optional[str] = None
+    title_id: Optional[str] = None
+
+    @property
+    def legislation_url(self) -> Optional[str]:
+        if not self.title_id:
+            return None
+        return f"https://www.legislation.gov.au/{self.title_id}/latest/text"
 
 
 @dataclass
