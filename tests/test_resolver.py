@@ -356,3 +356,19 @@ def test_impacted_by_annotates_centrality_percentile_when_provided(impact_resolv
 def test_impacted_by_omits_percentile_key_when_no_centrality_provided(impact_resolver: DefinitionResolver):
     results = impact_resolver.impacted_by("sec-6", "/akn/au/act/1999/1")
     assert all("centrality_percentile" not in r for r in results)
+
+
+def test_impacted_by_percentile_key_present_as_none_for_unscored_node(impact_resolver: DefinitionResolver):
+    # Partial centrality dict: scores sec-13 but deliberately omits sec-20, which
+    # impacted_by("sec-6", ...) also returns. sec-20's result dict must still carry
+    # the "centrality_percentile" key -- with value None -- not silently drop it.
+    scores = {
+        "/akn/au/act/1999/1#sec-13": 0.1,
+    }
+    resolver_with_centrality = DefinitionResolver(impact_resolver._graph, centrality=scores)
+
+    results = resolver_with_centrality.impacted_by("sec-6", "/akn/au/act/1999/1")
+
+    by_id = {r["node_id"]: r for r in results}
+    assert "centrality_percentile" in by_id["/akn/au/act/1999/1#sec-20"]
+    assert by_id["/akn/au/act/1999/1#sec-20"]["centrality_percentile"] is None
