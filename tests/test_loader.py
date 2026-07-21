@@ -10,6 +10,7 @@ INDEX_ENTRY = {
     "number": 119,
     "effective_date": "2026-06-04",
     "xml_path": "xml/privacy-act-1988.xml",
+    "title_id": "C2004A03712",
 }
 
 
@@ -19,6 +20,19 @@ def test_parse_act_returns_act_node():
     assert data.act_node.title == "Privacy Act 1988"
     assert data.act_node.year == 1988
     assert data.act_node.compilation_date == "2026-06-04"
+
+
+def test_parse_act_reads_title_id_from_index_entry():
+    data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
+    assert data.act_node.title_id == "C2004A03712"
+    assert data.act_node.legislation_url == "https://www.legislation.gov.au/C2004A03712/latest/text"
+
+
+def test_parse_act_title_id_defaults_to_none_when_absent():
+    entry_without_title_id = {k: v for k, v in INDEX_ENTRY.items() if k != "title_id"}
+    data = parse_act(FIXTURES / "privacy-act-1988.xml", entry_without_title_id)
+    assert data.act_node.title_id is None
+    assert data.act_node.legislation_url is None
 
 
 def test_parse_act_extracts_sections():

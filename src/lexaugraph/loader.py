@@ -75,6 +75,7 @@ def _parse_act_node(root: ET._Element, index_entry: dict) -> ActNode:
         title=index_entry["name"],
         year=index_entry["year"],
         compilation_date=index_entry.get("effective_date") or compilation_date,
+        title_id=index_entry.get("title_id"),
     )
 
 
