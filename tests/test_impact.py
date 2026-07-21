@@ -149,8 +149,13 @@ def test_compute_centrality_is_deterministic():
 
 def test_compute_centrality_ignores_non_ref_edges():
     g = nx.MultiDiGraph()
+    _add_ref(g, "A", "B")
     g.add_edge("Act1", "Sec1", key="contains", type="contains")
-    assert compute_centrality(g) == {}
+    scores = compute_centrality(g)
+    assert "A" in scores
+    assert "B" in scores
+    assert "Act1" not in scores
+    assert "Sec1" not in scores
 
 
 def test_centrality_percentile_ranks_highest_score_at_100():

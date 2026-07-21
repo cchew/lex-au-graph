@@ -93,7 +93,7 @@ def test_impact_analysis_tool_finds_direct_citer():
 
 def test_impact_analysis_tool_no_citers_returns_message():
     result = mcp_module.impact_analysis_tool("part-I__sec-13", "/akn/au/act/1988/119")
-    assert isinstance(result, str)
+    assert "No sections cite" in result
 
 
 def test_impact_analysis_tool_resolver_none_returns_error():
