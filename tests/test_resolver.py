@@ -3,7 +3,7 @@ import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
 from lexaugraph.resolver import DefinitionResolver
-from lexaugraph.models import ActData, ActNode, DefinedTermNode, SectionNode, RefEdge
+from lexaugraph.models import ActData, ActNode, DefinedTermNode, SectionNode, RefEdge, RelationType
 
 FIXTURES = Path(__file__).parent / "fixtures"
 INDEX_ENTRY = {
@@ -57,6 +57,32 @@ def test_cross_references_same_act(resolver: DefinitionResolver):
     assert len(refs) >= 1
     same_act = [r for r in refs if not r["is_cross_act"]]
     assert any(r["ref_text"] == "section 6" for r in same_act)
+
+
+def test_cross_references_returns_one_entry_per_citation_on_shared_edge():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    refs = [
+        RefEdge(source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6",
+                relation=RelationType.CITES, relation_confidence=0.75, extraction_confidence=0.6),
+        RefEdge(source_id=section_13.node_id, ref_text="s 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6",
+                relation=RelationType.REFERENCES_DEFINITION, relation_confidence=0.85, extraction_confidence=0.6),
+    ]
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=refs)
+    g = LexAuGraph()
+    g.add_act_data(data)
+    resolver = DefinitionResolver(g)
+
+    results = resolver.cross_references("part-I__sec-13", "/akn/au/act/1999/1")
+
+    assert len(results) == 2
+    relations = {r["relation"] for r in results}
+    assert relations == {"cites", "references_definition"}
+    assert all(r["is_cross_act"] is False for r in results)
+    assert all("relation_confidence_label" in r and "extraction_confidence_label" in r for r in results)
 
 
 def test_cross_references_no_refs_returns_empty(resolver: DefinitionResolver):

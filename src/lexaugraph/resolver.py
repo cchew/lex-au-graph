@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from . import impact
 from .graph import LexAuGraph
-from .models import DefinitionResult, MultiActTermSummary
+from .models import DefinitionResult, MultiActTermSummary, _confidence_label
 
 _JUNK_TERM_PATTERN = re.compile(
     r"^(and|or|but|the|of|in|on|at|to|for|does not|is not|means|includes?)( .*)?$",
@@ -48,13 +48,17 @@ class DefinitionResolver:
         section_id = f"{act_frbr_uri}#{eid}"
         results = []
         for _, target, data in self._graph.graph.out_edges(section_id, data=True):
-            if data.get("type") == "ref":
-                citations = data.get("citations", [])
-                ref_text = citations[0]["ref_text"] if citations else ""
+            if data.get("type") != "ref":
+                continue
+            is_cross_act = data.get("is_cross_act", False)
+            for citation in data.get("citations", []):
                 results.append({
                     "target": target,
-                    "ref_text": ref_text,
-                    "is_cross_act": data.get("is_cross_act", False),
+                    "ref_text": citation["ref_text"],
+                    "is_cross_act": is_cross_act,
+                    "relation": citation["relation"],
+                    "relation_confidence_label": _confidence_label(citation["relation_confidence"]),
+                    "extraction_confidence_label": _confidence_label(citation["extraction_confidence"]),
                 })
         return results
 

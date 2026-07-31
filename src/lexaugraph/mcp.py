@@ -39,7 +39,9 @@ def cross_references_tool(eid: str, act_frbr_uri: str) -> str:
     if not refs:
         return f"No outgoing references from {eid} in {act_frbr_uri}."
     lines = [
-        f"- [{r['ref_text']}]({r['target']}) ({'cross-act' if r['is_cross_act'] else 'same-act'})"
+        f"- [{r['ref_text']}]({r['target']}) ({'cross-act' if r['is_cross_act'] else 'same-act'}) "
+        f"[{r['relation']}, relation confidence: {r['relation_confidence_label']}, "
+        f"extraction confidence: {r['extraction_confidence_label']}]"
         for r in refs
     ]
     return "\n".join(lines)

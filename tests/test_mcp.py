@@ -41,6 +41,11 @@ def test_cross_references_tool():
     assert "section 6" in result
 
 
+def test_cross_references_tool_includes_relation_info():
+    result = mcp_module.cross_references_tool("part-I__sec-13", "/akn/au/act/1988/119")
+    assert "relation confidence" in result
+
+
 def test_cross_references_tool_no_refs():
     result = mcp_module.cross_references_tool("part-I__sec-1", "/akn/au/act/1988/119")
     assert isinstance(result, str)
