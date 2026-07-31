@@ -1,6 +1,7 @@
 from pathlib import Path
 import pytest
 from lexaugraph.loader import parse_act, load_corpus
+from lexaugraph.models import RelationType
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -12,6 +13,44 @@ INDEX_ENTRY = {
     "xml_path": "xml/privacy-act-1988.xml",
     "title_id": "C2004A03712",
 }
+
+RELATION_INDEX_ENTRY = {
+    "name": "Superannuation Amendment Act 1988",
+    "year": 1988,
+    "number": 130,
+    "effective_date": "2026-06-04",
+    "xml_path": "relation-classification-sample.xml",
+}
+
+
+def test_parse_act_classifies_tagged_ref_relation_and_extraction_confidence():
+    data = parse_act(FIXTURES / "relation-classification-sample.xml", RELATION_INDEX_ENTRY)
+    tagged = next(r for r in data.ref_edges if r.target_href is not None and r.ref_text == "Superannuation Act 1976")
+    assert tagged.relation == RelationType.REPEALS
+    assert tagged.extraction_confidence == 0.95
+
+
+def test_parse_act_classifies_prose_citation_relation_and_extraction_confidence():
+    data = parse_act(FIXTURES / "relation-classification-sample.xml", RELATION_INDEX_ENTRY)
+    prose = next(r for r in data.ref_edges if r.matched_title == "fair work act 2009")
+    assert prose.relation == RelationType.AMENDS
+    assert prose.extraction_confidence == 0.7
+
+
+def test_parse_act_classifies_intra_act_citation_relation_and_extraction_confidence():
+    data = parse_act(FIXTURES / "relation-classification-sample.xml", RELATION_INDEX_ENTRY)
+    intra = next(r for r in data.ref_edges if r.matched_section == "3")
+    assert intra.relation == RelationType.CITES
+    assert intra.extraction_confidence == 0.6
+
+
+def test_parse_act_without_client_classifies_every_ref_edge():
+    # No client passed -- must not attempt any network call (this fixture has no
+    # ambiguous citations, so this also implicitly proves the whole pipeline runs
+    # end-to-end with client=None, matching every existing call site in this file).
+    data = parse_act(FIXTURES / "relation-classification-sample.xml", RELATION_INDEX_ENTRY)
+    assert len(data.ref_edges) > 0
+    assert all(r.relation is not None for r in data.ref_edges)
 
 
 def test_parse_act_returns_act_node():

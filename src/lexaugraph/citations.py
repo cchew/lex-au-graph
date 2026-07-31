@@ -68,8 +68,17 @@ def _text_outside_refs(section_el: ET._Element) -> str:
         if not skip and el.text:
             parts.append(el.text)
         for child in el:
-            child_is_ref = child.tag.split("}")[-1] == "ref"
-            walk(child, skip or child_is_ref)
+            local_name = child.tag.split("}")[-1]
+            # <heading> text (e.g. "Amendment") sits immediately before the first
+            # <content>/<p> text with only whitespace between them once
+            # concatenated -- without this exclusion, a heading ending in a
+            # capitalized word bleeds into the citation regex's greedy
+            # preceding-title-word match (e.g. "Amendment" + "The Fair Work Act
+            # 2009" -> "Amendment The Fair Work Act 2009"). Headings are titles,
+            # not body prose, so they are out of scope for citation extraction
+            # regardless.
+            child_is_excluded = local_name in ("ref", "heading")
+            walk(child, skip or child_is_excluded)
             if child.tail:
                 parts.append(child.tail)
 

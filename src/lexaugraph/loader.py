@@ -8,7 +8,7 @@ from typing import Optional
 import lxml.etree as ET
 
 from .models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
-from . import citations
+from . import citations, relation_classifier
 
 AKN_NS = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
 AKN = f"{{{AKN_NS}}}"
@@ -16,13 +16,17 @@ AKN = f"{{{AKN_NS}}}"
 _UNTAGGED_DEF_PATTERN = re.compile(r"^([a-zA-Z][a-zA-Z0-9 \-']{2,60}) means ")
 _RECURRENCE_THRESHOLD = 2
 
+_TAGGED_REF_EXTRACTION_CONFIDENCE = 0.95
+_PROSE_CITATION_EXTRACTION_CONFIDENCE = 0.7
+_INTRA_ACT_CITATION_EXTRACTION_CONFIDENCE = 0.6
 
-def parse_act(xml_path: Path, index_entry: dict) -> ActData:
+
+def parse_act(xml_path: Path, index_entry: dict, client: "anthropic.Anthropic | None" = None) -> ActData:
     tree = ET.parse(str(xml_path))
     root = tree.getroot()
 
     act_node = _parse_act_node(root, index_entry)
-    sections, ref_edges = _parse_sections(root, act_node.frbr_uri)
+    sections, ref_edges = _parse_sections(root, act_node.frbr_uri, client=client)
     defined_terms = _extract_defined_terms(root, act_node.frbr_uri)
 
     return ActData(
@@ -33,7 +37,7 @@ def parse_act(xml_path: Path, index_entry: dict) -> ActData:
     )
 
 
-def load_corpus(corpus_dir: Path) -> list[ActData]:
+def load_corpus(corpus_dir: Path, client: "anthropic.Anthropic | None" = None) -> list[ActData]:
     index_path = corpus_dir / "index.json"
     if not index_path.exists():
         raise FileNotFoundError(
@@ -49,7 +53,7 @@ def load_corpus(corpus_dir: Path) -> list[ActData]:
         xml_path = corpus_dir / entry["xml_path"]
         if xml_path.exists():
             try:
-                result.append(parse_act(xml_path, entry))
+                result.append(parse_act(xml_path, entry, client=client))
             except ValueError as e:
                 print(f"Warning: {e} — skipping.", file=sys.stderr)
         else:
@@ -80,7 +84,7 @@ def _parse_act_node(root: ET._Element, index_entry: dict) -> ActNode:
 
 
 def _parse_sections(
-    root: ET._Element, act_frbr_uri: str
+    root: ET._Element, act_frbr_uri: str, client: "anthropic.Anthropic | None" = None
 ) -> tuple[list[SectionNode], list[RefEdge]]:
     sections: list[SectionNode] = []
     ref_edges: list[RefEdge] = []
@@ -108,11 +112,15 @@ def _parse_sections(
             href = ref_el.get("href") or ""
             ref_text = "".join(ref_el.itertext()).strip()
             is_cross_act = not href.startswith("#")
+            classification = relation_classifier.classify_relation(ref_text, text, client)
             ref_edges.append(RefEdge(
                 source_id=node.node_id,
                 ref_text=ref_text,
                 is_cross_act=is_cross_act,
                 target_href=href,
+                relation=classification.relation,
+                relation_confidence=classification.relation_confidence,
+                extraction_confidence=_TAGGED_REF_EXTRACTION_CONFIDENCE,
             ))
 
         for raw_match in citations.extract_prose_citations(section):
@@ -120,15 +128,23 @@ def _parse_sections(
             if normalized is None:
                 continue
             title, _year = normalized
+            classification = relation_classifier.classify_relation(raw_match, text, client)
             ref_edges.append(RefEdge(
                 source_id=node.node_id,
                 ref_text=raw_match,
                 is_cross_act=True,
                 target_href=None,
                 matched_title=title,
+                relation=classification.relation,
+                relation_confidence=classification.relation_confidence,
+                extraction_confidence=_PROSE_CITATION_EXTRACTION_CONFIDENCE,
             ))
 
         for raw_match in citations.extract_intra_act_citations(section):
+            # Classified once per raw_match, not per section number -- a
+            # multi-section list citation ("sections 26WD and 26WE") shares
+            # one governing relation across every section number it expands to.
+            classification = relation_classifier.classify_relation(raw_match, text, client)
             for section_number in citations.extract_section_numbers(raw_match):
                 ref_edges.append(RefEdge(
                     source_id=node.node_id,
@@ -137,6 +153,9 @@ def _parse_sections(
                     target_href=None,
                     matched_title=None,
                     matched_section=section_number,
+                    relation=classification.relation,
+                    relation_confidence=classification.relation_confidence,
+                    extraction_confidence=_INTRA_ACT_CITATION_EXTRACTION_CONFIDENCE,
                 ))
 
     return sections, ref_edges
