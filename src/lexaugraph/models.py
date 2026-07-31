@@ -1,6 +1,24 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from enum import Enum
+from typing import Literal, Optional
+
+
+class RelationType(str, Enum):
+    AMENDS = "amends"
+    REPEALS = "repeals"
+    CITES = "cites"
+    REFERENCES_DEFINITION = "references_definition"
+
+
+def _confidence_label(score: float) -> Literal["high", "medium", "low"]:
+    # Thresholds are a first-pass calibration -- not independently validated.
+    # See scripts/verify_relation_classification.py for real-corpus sampling.
+    if score >= 0.8:
+        return "high"
+    if score >= 0.5:
+        return "medium"
+    return "low"
 
 
 @dataclass
@@ -57,6 +75,17 @@ class RefEdge:
     target_href: Optional[str] = None
     matched_title: Optional[str] = None
     matched_section: Optional[str] = None
+    relation: RelationType = RelationType.CITES
+    relation_confidence: float = 0.75
+    extraction_confidence: float = 0.6
+
+    @property
+    def relation_confidence_label(self) -> Literal["high", "medium", "low"]:
+        return _confidence_label(self.relation_confidence)
+
+    @property
+    def extraction_confidence_label(self) -> Literal["high", "medium", "low"]:
+        return _confidence_label(self.extraction_confidence)
 
 
 @dataclass

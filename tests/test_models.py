@@ -1,5 +1,6 @@
 from lexaugraph.models import (
-    ActNode, SectionNode, DefinedTermNode, RefEdge, ActData, DefinitionResult
+    ActNode, SectionNode, DefinedTermNode, RefEdge, ActData, DefinitionResult,
+    RelationType, _confidence_label,
 )
 
 
@@ -148,3 +149,46 @@ def test_act_node_legislation_url_built_from_title_id():
         title_id="C2004A03712",
     )
     assert node.legislation_url == "https://www.legislation.gov.au/C2004A03712/latest/text"
+
+
+def test_relation_type_values():
+    assert RelationType.AMENDS == "amends"
+    assert RelationType.REPEALS == "repeals"
+    assert RelationType.CITES == "cites"
+    assert RelationType.REFERENCES_DEFINITION == "references_definition"
+
+
+def test_confidence_label_high_at_or_above_point_eight():
+    assert _confidence_label(0.8) == "high"
+    assert _confidence_label(1.0) == "high"
+
+
+def test_confidence_label_medium_between_point_five_and_point_eight():
+    assert _confidence_label(0.5) == "medium"
+    assert _confidence_label(0.79) == "medium"
+
+
+def test_confidence_label_low_below_point_five():
+    assert _confidence_label(0.49) == "low"
+    assert _confidence_label(0.0) == "low"
+
+
+def test_ref_edge_defaults_relation_to_cites():
+    r = RefEdge(source_id="/akn/au/act/1988/119#sec-1", ref_text="the Corporations Act 2001", is_cross_act=True)
+    assert r.relation == RelationType.CITES
+
+
+def test_ref_edge_relation_confidence_label_property():
+    r = RefEdge(
+        source_id="/akn/au/act/1988/119#sec-1", ref_text="x", is_cross_act=True,
+        relation_confidence=0.9,
+    )
+    assert r.relation_confidence_label == "high"
+
+
+def test_ref_edge_extraction_confidence_label_property():
+    r = RefEdge(
+        source_id="/akn/au/act/1988/119#sec-1", ref_text="x", is_cross_act=True,
+        extraction_confidence=0.4,
+    )
+    assert r.extraction_confidence_label == "low"
