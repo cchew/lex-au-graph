@@ -20,7 +20,7 @@ Full stack map: [lex-au-search's `STACK.md`](https://github.com/cchew/lex-au-sea
 Builds a directed graph over the lex-au AKN corpus:
 
 - **Nodes:** Act, Section, DefinedTerm
-- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act, weighted by citation frequency), `defines` (Section→DefinedTerm)
+- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act — each carries one or more classified citations: `amends`/`repeals`/`cites`/`references_definition`, with a relation-confidence and an extraction-confidence score per citation), `defines` (Section→DefinedTerm)
 
 Exposes four MCP tools:
 
@@ -85,6 +85,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
+- **v0.11.0** - Typed relation edges (`amends`/`repeals`/`cites`/`references_definition`) and per-citation relation/extraction confidence scores on `ref` edges. Hybrid regex+LLM classification (LLM fallback opt-in via `--llm-fallback`). `cross_references` now returns one entry per citation rather than per edge.
 - **v0.10.0** - `ActNode.title_id` and `legislation_url` - Act nodes now carry legislation.gov.au's opaque register ID (already present in lex-au's `index.json`, previously dropped by the graph loader) and a ready-to-use deep link (`https://www.legislation.gov.au/{title_id}/latest/text`). Act-level only - legislation.gov.au has no stable per-section anchor scheme (confirmed live: rendered text lives in a client-side EPUB blob with unstable, auto-generated Word bookmark ids, not semantic `#eId`-style anchors).
 - **v0.9.0** - Legislative impact analysis: `impacted_by()` reverse-reachability fan-in ("what's affected if this section changes") and `compute_centrality()` PageRank triage over the ref subgraph. New `centrality`/`impact` CLI commands and `impact_analysis` MCP tool.
 - **v0.8.0** - Intra-Act section citation extraction (bare section/subsection references, multi-section lists); persistent edge citation-frequency tracking; graph migrated to MultiDiGraph.
@@ -102,6 +103,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 - Titles containing a lowercase preposition other than "of"/"and" (e.g. "Participants **in** British Nuclear Tests...") truncate to the portion after the preposition, since those words are deliberately excluded from the connector set to avoid over-matching surrounding prose (see comment above `_TITLE_CONNECTOR` in `citations.py`). A safe fix requires anchoring on `Act|Regulations|Rules <year>` and walking backward through title words, not a same-class one-line patch - deferred.
 - `find_all_definitions` returns results in graph iteration order (non-deterministic across rebuilds if node insertion order changes).
 - Graph is a static snapshot; re-run `lexaugraph build` after corpus updates.
+- Relation classification (`amends`/`repeals`/`cites`/`references_definition`) uses a regex verb-proximity heuristic (±80-character window around each citation, excluding the citation's own text) with an opt-in LLM fallback for ambiguous cases (`lexaugraph build --llm-fallback`, off by default — real Anthropic API cost). Window size and confidence thresholds are a first-pass calibration, not independently validated against a labelled dataset — see `scripts/verify_relation_classification.py` for real-corpus sampling.
 
 ## License
 
