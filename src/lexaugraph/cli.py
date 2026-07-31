@@ -20,12 +20,22 @@ _EXTRACTION_BATCH_SIZE = 15
 def build(
     corpus_dir: Path = typer.Option(DEFAULT_CORPUS, "--corpus-dir", "-c", help="Path to lex-au corpus directory"),
     output: Path = typer.Option(DEFAULT_GRAPH, "--output", "-o", help="Output path for graph.json"),
+    llm_fallback: bool = typer.Option(
+        False, "--llm-fallback",
+        help="Use an LLM to classify ambiguous ref relation types (amends/repeals/"
+             "cites/references_definition). Costs real Anthropic API calls -- off by default.",
+    ),
 ) -> None:
     """Build the cross-reference graph from the lex-au AKN corpus."""
     from .graph import LexAuGraph
     typer.echo(f"Building graph from {corpus_dir} ...")
+    client = None
+    if llm_fallback:
+        import anthropic
+        client = anthropic.Anthropic()
+        typer.echo("LLM fallback enabled for ambiguous relation classification.")
     g = LexAuGraph()
-    g.build(corpus_dir)
+    g.build(corpus_dir, client=client)
     graph_stats = g.stats()
     g.save(output)
     typer.echo(f"Graph saved to {output}")

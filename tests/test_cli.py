@@ -110,3 +110,37 @@ def test_impact_annotates_centrality_percentile_when_sidecar_present(tmp_path: P
 
     assert result.exit_code == 0, result.output
     assert "percentile" in result.output
+
+
+def test_build_llm_fallback_flag_constructs_client(tmp_path: Path, monkeypatch):
+    corpus_dir = _make_corpus(tmp_path)
+    output = tmp_path / "graph.json"
+    constructed = []
+
+    class _FakeClient:
+        def __init__(self):
+            constructed.append(True)
+
+    monkeypatch.setattr("anthropic.Anthropic", _FakeClient)
+
+    result = runner.invoke(app, [
+        "build", "--corpus-dir", str(corpus_dir), "--output", str(output), "--llm-fallback",
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert constructed == [True]
+    assert "LLM fallback enabled" in result.output
+
+
+def test_build_without_llm_fallback_flag_does_not_construct_client(tmp_path: Path, monkeypatch):
+    corpus_dir = _make_corpus(tmp_path)
+    output = tmp_path / "graph.json"
+
+    def _fail_if_constructed():
+        raise AssertionError("anthropic.Anthropic should not be constructed without --llm-fallback")
+
+    monkeypatch.setattr("anthropic.Anthropic", _fail_if_constructed)
+
+    result = runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(output)])
+
+    assert result.exit_code == 0, result.output

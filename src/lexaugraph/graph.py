@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import anthropic
 import networkx as nx
 
 from .citations import is_self_citation, normalize_title
@@ -37,8 +38,8 @@ class LexAuGraph:
             "untagged": {"total": 0, "self_citation_filtered": 0, "resolved": 0, "unresolved": 0},
         }
 
-    def build(self, corpus_dir: Path) -> None:
-        acts: list[ActData] = list(load_corpus(corpus_dir))
+    def build(self, corpus_dir: Path, client: "anthropic.Anthropic | None" = None) -> None:
+        acts: list[ActData] = list(load_corpus(corpus_dir, client=client))
         for act_data in acts:
             self._add_act_nodes(act_data)
         for act_data in acts:
