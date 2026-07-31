@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+import anthropic
 import lxml.etree as ET
 
 from .models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
