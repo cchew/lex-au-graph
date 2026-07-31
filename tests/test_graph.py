@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
-from lexaugraph.models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
+from lexaugraph.models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode, RelationType
 
 FIXTURES = Path(__file__).parent / "fixtures"
 INDEX_ENTRY = {
@@ -200,6 +200,84 @@ def test_repeated_refs_between_same_pair_increment_weight_not_overwrite():
     edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
     assert edge["weight"] == 3
     assert edge["ref_texts"] == ["section 6", "s 6", "subsection 6(2)"]
+
+
+def test_ref_edge_carries_citations_list_with_relation_and_confidence():
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    ref = RefEdge(
+        source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="6",
+        relation=RelationType.REPEALS, relation_confidence=0.85, extraction_confidence=0.6,
+    )
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=[ref])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
+    assert edge["citations"] == [{
+        "ref_text": "section 6",
+        "relation": "repeals",
+        "relation_confidence": 0.85,
+        "extraction_confidence": 0.6,
+    }]
+    assert "ref_text" not in edge  # stale singular scalar is gone
+
+
+def test_ref_edge_preserves_differing_relations_on_repeated_citations():
+    # Two citations between the same section pair with DIFFERENT relations must
+    # both survive -- the bug the independent spec review caught: a scalar
+    # relation field would silently overwrite the first citation's classification.
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    refs = [
+        RefEdge(source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6",
+                relation=RelationType.CITES, relation_confidence=0.75, extraction_confidence=0.6),
+        RefEdge(source_id=section_13.node_id, ref_text="s 6", is_cross_act=False,
+                target_href=None, matched_title=None, matched_section="6",
+                relation=RelationType.REFERENCES_DEFINITION, relation_confidence=0.85, extraction_confidence=0.6),
+    ]
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=refs)
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    edge = g.graph.edges[section_13.node_id, section_6.node_id, "ref"]
+    relations = [c["relation"] for c in edge["citations"]]
+    assert relations == ["cites", "references_definition"]
+
+
+def test_citations_list_is_json_serializable(tmp_path: Path):
+    # Regression test for the spec-review finding: a CitationRecord dataclass
+    # instance on a graph edge would silently corrupt via json.dumps(default=str)
+    # on save, and load() could not reconstruct it. citations must be list[dict].
+    act = ActNode(frbr_uri="/akn/au/act/1999/1", title="Sample Act 1999", year=1999)
+    section_6 = SectionNode(eid="part-I__sec-6", act_frbr_uri=act.frbr_uri, heading="Definitions", text="...")
+    section_13 = SectionNode(eid="part-I__sec-13", act_frbr_uri=act.frbr_uri, heading="Application", text="...")
+    ref = RefEdge(
+        source_id=section_13.node_id, ref_text="section 6", is_cross_act=False,
+        target_href=None, matched_title=None, matched_section="6",
+        relation=RelationType.AMENDS, relation_confidence=0.85, extraction_confidence=0.6,
+    )
+    data = ActData(act_node=act, sections=[section_6, section_13], defined_terms=[], ref_edges=[ref])
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    path = tmp_path / "graph.json"
+    g.save(path)
+    loaded = LexAuGraph.load(path)
+
+    edge = loaded.graph.edges[section_13.node_id, section_6.node_id, "ref"]
+    assert edge["citations"] == [{
+        "ref_text": "section 6",
+        "relation": "amends",
+        "relation_confidence": 0.85,
+        "extraction_confidence": 0.6,
+    }]
 
 
 def test_repeated_pending_refs_to_same_target_increment_weight_on_retry(graph_with_privacy: LexAuGraph):

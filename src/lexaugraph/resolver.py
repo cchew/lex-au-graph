@@ -49,9 +49,11 @@ class DefinitionResolver:
         results = []
         for _, target, data in self._graph.graph.out_edges(section_id, data=True):
             if data.get("type") == "ref":
+                citations = data.get("citations", [])
+                ref_text = citations[0]["ref_text"] if citations else ""
                 results.append({
                     "target": target,
-                    "ref_text": data.get("ref_text", ""),
+                    "ref_text": ref_text,
                     "is_cross_act": data.get("is_cross_act", False),
                 })
         return results

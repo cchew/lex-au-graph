@@ -125,18 +125,25 @@ class LexAuGraph:
                 self._add_or_increment_ref_edge(ref.source_id, target_id, ref)
 
     def _add_or_increment_ref_edge(self, source_id: str, target_id: str, ref: RefEdge) -> None:
+        citation = {
+            "ref_text": ref.ref_text,
+            "relation": ref.relation.value,
+            "relation_confidence": ref.relation_confidence,
+            "extraction_confidence": ref.extraction_confidence,
+        }
         if self.graph.has_edge(source_id, target_id, key="ref"):
             edge = self.graph.edges[source_id, target_id, "ref"]
-            edge["weight"] += 1
-            edge["ref_texts"].append(ref.ref_text)
+            edge["citations"].append(citation)
+            edge["weight"] = len(edge["citations"])
+            edge["ref_texts"] = [c["ref_text"] for c in edge["citations"]]
         else:
             self.graph.add_edge(
                 source_id,
                 target_id,
                 key="ref",
                 type="ref",
-                ref_text=ref.ref_text,
                 is_cross_act=ref.is_cross_act,
+                citations=[citation],
                 weight=1,
                 ref_texts=[ref.ref_text],
             )
