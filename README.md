@@ -5,7 +5,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 > [!NOTE]
 > [search.gov.au](https://search.gov.au)'s Align stream ("Common Ground", Department of Finance, alpha — see [Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026) tackles the same problem at whole-of-government scale: surfacing linkage and divergence across Acts and agencies.
 
-**Status: v0.10.0**
+**Status: v0.11.0**
 
 ## Uses / used by
 
@@ -85,7 +85,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 
 ## Versions
 
-- **v0.11.0** - Typed relation edges (`amends`/`repeals`/`cites`/`references_definition`) and per-citation relation/extraction confidence scores on `ref` edges. Hybrid regex+LLM classification (LLM fallback opt-in via `--llm-fallback`). `cross_references` now returns one entry per citation rather than per edge.
+- v0.11.0 (2026-08-02): section-scoped `resolve_definition` (optional `section_eid` param), resolving in-Act term collisions by exact section, then nearest enclosing Part/Division, else unresolved rather than guessed. 197 tests.
 - **v0.10.0** - `ActNode.title_id` and `legislation_url` - Act nodes now carry legislation.gov.au's opaque register ID (already present in lex-au's `index.json`, previously dropped by the graph loader) and a ready-to-use deep link (`https://www.legislation.gov.au/{title_id}/latest/text`). Act-level only - legislation.gov.au has no stable per-section anchor scheme (confirmed live: rendered text lives in a client-side EPUB blob with unstable, auto-generated Word bookmark ids, not semantic `#eId`-style anchors).
 - **v0.9.0** - Legislative impact analysis: `impacted_by()` reverse-reachability fan-in ("what's affected if this section changes") and `compute_centrality()` PageRank triage over the ref subgraph. New `centrality`/`impact` CLI commands and `impact_analysis` MCP tool.
 - **v0.8.0** - Intra-Act section citation extraction (bare section/subsection references, multi-section lists); persistent edge citation-frequency tracking; graph migrated to MultiDiGraph.
