@@ -398,3 +398,56 @@ def test_impacted_by_percentile_key_present_as_none_for_unscored_node(impact_res
     by_id = {r["node_id"]: r for r in results}
     assert "centrality_percentile" in by_id["/akn/au/act/1999/1#sec-20"]
     assert by_id["/akn/au/act/1999/1#sec-20"]["centrality_percentile"] is None
+
+
+COLLISION_INDEX_ENTRY = {
+    "name": "Levy and Charges Act 2026",
+    "year": 2026,
+    "number": 1,
+    "effective_date": "2026-01-01",
+    "xml_path": "xml/collision-test-act.xml",
+}
+
+
+@pytest.fixture()
+def collision_resolver() -> DefinitionResolver:
+    act_data = parse_act(FIXTURES / "collision-test-act.xml", COLLISION_INDEX_ENTRY)
+    g = LexAuGraph()
+    g.add_act_data(act_data)
+    return DefinitionResolver(g)
+
+
+def test_resolve_definition_exact_section_match(collision_resolver: DefinitionResolver):
+    result = collision_resolver.resolve_definition(
+        "levy", "/akn/au/act/2026/1", section_eid="part-I__dvs-1__sec-5"
+    )
+    assert result is not None
+    assert result.section_eid == "part-I__dvs-1__sec-5"
+    assert "Division 1" in result.definition_text
+
+
+def test_resolve_definition_nearest_enclosing_division(collision_resolver: DefinitionResolver):
+    # sec-6 doesn't define "levy" itself, but it's in the same Division as
+    # sec-5's definition, and Part II's definition is out of scope here --
+    # sec-5's Division-scoped definition should win over Part II's.
+    result = collision_resolver.resolve_definition(
+        "levy", "/akn/au/act/2026/1", section_eid="part-I__dvs-1__sec-6"
+    )
+    assert result is not None
+    assert result.section_eid == "part-I__dvs-1__sec-5"
+
+
+def test_resolve_definition_ambiguous_returns_none(collision_resolver: DefinitionResolver):
+    # "charge" is defined in Part III and Part IV, neither of which
+    # encloses Part V -- genuinely ambiguous, must not guess.
+    result = collision_resolver.resolve_definition(
+        "charge", "/akn/au/act/2026/1", section_eid="part-V__sec-300"
+    )
+    assert result is None
+
+
+def test_resolve_definition_no_section_eid_keeps_old_behaviour(collision_resolver: DefinitionResolver):
+    # Backward compatibility: omitting section_eid must still return *a*
+    # match, not None, for every existing caller (cli.py, mcp.py).
+    result = collision_resolver.resolve_definition("levy", "/akn/au/act/2026/1")
+    assert result is not None

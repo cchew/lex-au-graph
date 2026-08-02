@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -95,16 +96,19 @@ def centrality(
 def resolve(
     term: str = typer.Option(..., "--term", "-t", help="Defined term to resolve"),
     act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),
+    section: Optional[str] = typer.Option(
+        None, "--section", "-s", help="Section eId to scope resolution to (e.g. part-I__sec-6)"
+    ),
     graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
 ) -> None:
-    """Resolve a defined term within an Act."""
+    """Resolve a defined term within an Act, optionally scoped to a section."""
     from .graph import LexAuGraph
     from .resolver import DefinitionResolver
     g = LexAuGraph.load(graph)
     resolver = DefinitionResolver(g)
-    result = resolver.resolve_definition(term, act)
+    result = resolver.resolve_definition(term, act, section_eid=section)
     if result is None:
-        typer.echo(f"No definition found for '{term}' in {act}.")
+        typer.echo(f"No definition found for '{term}' in {act}" + (f" scoped to {section}." if section else "."))
         raise typer.Exit(1)
     typer.echo(f"{result.display_term} ({result.act_title} - {result.section_eid})")
     typer.echo(result.definition_text)

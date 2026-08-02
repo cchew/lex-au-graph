@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/2026/1/!main"/>
+          <FRBRuri value="/akn/au/act/2026/1"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/2026/1/eng@2026-01-01/!main"/>
+          <FRBRuri value="/akn/au/act/2026/1/eng@2026-01-01"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/2026/1/eng@2026-01-01/!main.xml"/>
+          <FRBRuri value="/akn/au/act/2026/1/eng@2026-01-01.xml"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part 1</num>
+        <heading>Preliminary</heading>
+        <division eId="part-I__dvs-1">
+          <num>Division 1</num>
+          <heading>Interpretation</heading>
+          <section eId="part-I__dvs-1__sec-5">
+            <num>5</num>
+            <heading>Definitions</heading>
+            <content>
+              <p><term refersTo="#term-levy">levy</term> means <def>an amount payable under Division 1.</def></p>
+            </content>
+          </section>
+          <section eId="part-I__dvs-1__sec-6">
+            <num>6</num>
+            <heading>Other definitions</heading>
+            <content>
+              <p>This section has no definitions of its own.</p>
+            </content>
+          </section>
+        </division>
+      </part>
+      <part eId="part-II">
+        <num>Part 2</num>
+        <heading>Special levies</heading>
+        <section eId="part-II__sec-40">
+          <num>40</num>
+          <heading>Special levy definitions</heading>
+          <content>
+            <p><term refersTo="#term-levy">levy</term> means <def>in this Part, an amount payable under Part 2.</def></p>
+          </content>
+        </section>
+      </part>
+      <part eId="part-III">
+        <num>Part 3</num>
+        <heading>Charges</heading>
+        <section eId="part-III__sec-100">
+          <num>100</num>
+          <heading>Charge definitions A</heading>
+          <content>
+            <p><term refersTo="#term-charge">charge</term> means <def>an amount payable under this Part in relation to freight.</def></p>
+          </content>
+        </section>
+      </part>
+      <part eId="part-IV">
+        <num>Part 4</num>
+        <heading>Fees</heading>
+        <section eId="part-IV__sec-200">
+          <num>200</num>
+          <heading>Charge definitions B</heading>
+          <content>
+            <p><term refersTo="#term-charge">charge</term> means <def>an amount payable under this Part in relation to storage.</def></p>
+          </content>
+        </section>
+      </part>
+      <part eId="part-V">
+        <num>Part 5</num>
+        <heading>Unrelated</heading>
+        <section eId="part-V__sec-300">
+          <num>300</num>
+          <heading>Nothing to do with charges</heading>
+          <content>
+            <p>This section does not use or define "charge".</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

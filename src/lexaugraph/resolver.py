@@ -12,34 +12,86 @@ _JUNK_TERM_PATTERN = re.compile(
 )
 
 
+def _containment_prefix(section_eid: str) -> str:
+    """Return the Part/Division containment path for a section eid, e.g.
+    'part-II__dvs-1__sec-6AA' -> 'part-II__dvs-1'. Returns '' for a flat
+    eid with no '__'-delimited ancestry (e.g. 'sec-1'), meaning the Act
+    has no Part/Division structure to scope against."""
+    if "__" not in section_eid:
+        return ""
+    return section_eid.rsplit("__", 1)[0]
+
+
 class DefinitionResolver:
     def __init__(self, graph: LexAuGraph, centrality: dict[str, float] | None = None) -> None:
         self._graph = graph
         self._centrality = centrality
 
     def resolve_definition(
-        self, term: str, act_frbr_uri: str
+        self, term: str, act_frbr_uri: str, section_eid: Optional[str] = None
     ) -> Optional[DefinitionResult]:
         term_lower = term.lower().strip()
+        candidates: list[tuple[str, str, dict[str, Any]]] = []
         for node_id, data in self._graph.graph.nodes(data=True):
             if data.get("type") != "defined_term":
                 continue
             if data.get("act_frbr_uri") != act_frbr_uri:
                 continue
-            if data.get("term") == term_lower:
-                def_text = data.get("definition_text")
-                section_eid = data.get("section_eid")
-                if not def_text or not section_eid:
-                    continue
-                act_data = self._graph.graph.nodes.get(act_frbr_uri, {})
-                return DefinitionResult(
-                    term=term,
-                    display_term=data.get("display_term", term),
-                    definition_text=def_text,
-                    act_frbr_uri=act_frbr_uri,
-                    section_eid=section_eid,
-                    act_title=act_data.get("title", act_frbr_uri),
-                )
+            if data.get("term") != term_lower:
+                continue
+            def_text = data.get("definition_text")
+            def_section_eid = data.get("section_eid")
+            if not def_text or not def_section_eid:
+                continue
+            candidates.append((def_section_eid, def_text, data))
+
+        if not candidates:
+            return None
+
+        chosen = self._select_candidate(candidates, section_eid)
+        if chosen is None:
+            return None
+        def_section_eid, def_text, data = chosen
+        act_data = self._graph.graph.nodes.get(act_frbr_uri, {})
+        return DefinitionResult(
+            term=term,
+            display_term=data.get("display_term", term),
+            definition_text=def_text,
+            act_frbr_uri=act_frbr_uri,
+            section_eid=def_section_eid,
+            act_title=act_data.get("title", act_frbr_uri),
+        )
+
+    def _select_candidate(
+        self,
+        candidates: list[tuple[str, str, dict[str, Any]]],
+        section_eid: Optional[str],
+    ) -> Optional[tuple[str, str, dict[str, Any]]]:
+        if len(candidates) == 1 or section_eid is None:
+            return candidates[0]
+
+        for c in candidates:
+            if c[0] == section_eid:
+                return c
+
+        query_prefix = _containment_prefix(section_eid)
+        enclosing: list[tuple[int, tuple[str, str, dict[str, Any]]]] = []
+        for c in candidates:
+            def_prefix = _containment_prefix(c[0])
+            if def_prefix and (
+                query_prefix == def_prefix or query_prefix.startswith(def_prefix + "__")
+            ):
+                enclosing.append((len(def_prefix), c))
+        if enclosing:
+            enclosing.sort(key=lambda pair: -pair[0])
+            return enclosing[0][1]
+
+        # No candidate's Part/Division encloses the requesting section, and
+        # there's more than one candidate (the single-candidate case
+        # already returned above) -- genuine ambiguity this method won't
+        # guess at. Returning None means the caller treats the term as
+        # unresolved for this section rather than silently picking a
+        # possibly-wrong meaning; the reader renders it as plain text.
         return None
 
     def cross_references(
