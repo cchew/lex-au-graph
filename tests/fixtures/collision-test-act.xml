@@ -46,6 +46,17 @@
             </content>
           </section>
         </division>
+        <division eId="part-I__dvs-2">
+          <num>Division 2</num>
+          <heading>Other interpretation</heading>
+          <section eId="part-I__dvs-2__sec-7">
+            <num>7</num>
+            <heading>Definitions</heading>
+            <content>
+              <p><term refersTo="#term-levy">levy</term> means <def>an amount payable under Division 2.</def></p>
+            </content>
+          </section>
+        </division>
       </part>
       <part eId="part-II">
         <num>Part 2</num>

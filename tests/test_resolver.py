@@ -427,9 +427,13 @@ def test_resolve_definition_exact_section_match(collision_resolver: DefinitionRe
 
 
 def test_resolve_definition_nearest_enclosing_division(collision_resolver: DefinitionResolver):
-    # sec-6 doesn't define "levy" itself, but it's in the same Division as
-    # sec-5's definition, and Part II's definition is out of scope here --
-    # sec-5's Division-scoped definition should win over Part II's.
+    # sec-6 doesn't define "levy" itself, but it's in the same Division (dvs-1)
+    # as sec-5's definition. Three competing "levy" definitions exist: Part II
+    # (different Part -- out of scope), Part I/Division 2 (same Part, but a
+    # *different* Division -- would win under Part-only scoping, so this pins
+    # true Division-level granularity), and Part I/Division 1 sec-5 (same
+    # Division as the query -- the only correct answer). Only a resolver that
+    # actually scopes to Division, not just Part, picks sec-5 here.
     result = collision_resolver.resolve_definition(
         "levy", "/akn/au/act/2026/1", section_eid="part-I__dvs-1__sec-6"
     )
