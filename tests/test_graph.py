@@ -400,6 +400,61 @@ def test_add_defined_term_adds_queryable_node_without_touching_act_or_section(
     assert dict(graph_with_privacy.graph.nodes[sec_id]) == sec_node_before
 
 
+def test_add_defined_term_classifies_and_creates_mentions_edges():
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sec_def = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Registrar means a person appointed to register marriages.",
+    )
+    sec_mention = SectionNode(
+        eid="part-II__sec-10", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="The Registrar must keep a register.",
+    )
+    data = ActData(act_node=act, sections=[sec_def, sec_mention], defined_terms=[], ref_edges=[])
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    backfilled = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="a person appointed to register marriages.",
+    )
+    g.add_defined_term(backfilled)
+
+    term_id = "/akn/au/act/1961/12#term-registrar"
+    sec_mention_id = "/akn/au/act/1961/12#part-II__sec-10"
+    assert g.graph.nodes[term_id]["entity_type"] == "registrar"
+    assert g.graph.has_edge(sec_mention_id, term_id, key="mentions")
+    assert g.graph.edges[sec_mention_id, term_id, "mentions"]["count"] == 1
+
+
+def test_add_defined_term_non_entity_term_creates_no_mentions_edges():
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sec_def = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="purpose means the object for which a thing is done.",
+    )
+    data = ActData(act_node=act, sections=[sec_def], defined_terms=[], ref_edges=[])
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    backfilled = DefinedTermNode(
+        term="purpose", display_term="purpose",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="the object for which a thing is done.",
+    )
+    g.add_defined_term(backfilled)
+
+    term_id = "/akn/au/act/1961/12#term-purpose"
+    assert g.graph.nodes[term_id]["entity_type"] is None
+    assert list(g.graph.in_edges(term_id, data=True, keys=True))  # only the 'defines' edge
+    mentions_edges = [
+        (u, v) for u, v, k, d in g.graph.in_edges(term_id, data=True, keys=True)
+        if k == "mentions"
+    ]
+    assert mentions_edges == []
+
+
 FOI_INDEX_ENTRY = {
     "name": "Freedom of Information Act 1982",
     "year": 1982,

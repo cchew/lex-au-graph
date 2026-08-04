@@ -8,6 +8,7 @@ import anthropic
 import networkx as nx
 
 from .citations import is_self_citation, normalize_title
+from .entities import classify_entity_type
 from .loader import load_corpus
 from .models import ActData, DefinedTermNode, RefEdge
 
@@ -142,7 +143,11 @@ class LexAuGraph:
 
         Used to backfill untagged prose definitions recovered by the LLM extraction
         pipeline into a graph.json where the Act and its sections already exist.
+        Also classifies entity_type and builds mentions edges against this Act's
+        already-loaded sections, matching the main build path (_add_act_nodes) --
+        terms added via this path never go through loader.py's classification.
         """
+        term.entity_type = classify_entity_type(term.display_term)
         self.graph.add_node(
             term.node_id,
             type="defined_term",
@@ -151,10 +156,20 @@ class LexAuGraph:
             act_frbr_uri=term.act_frbr_uri,
             section_eid=term.section_eid,
             definition_text=term.definition_text,
+            entity_type=term.entity_type,
         )
         section_id = f"{term.act_frbr_uri}#{term.section_eid}"
         if section_id in self.graph.nodes:
             self.graph.add_edge(section_id, term.node_id, key="defines", type="defines")
+
+        if term.entity_type:
+            pattern = _build_entity_mention_pattern([term])
+            for node_id, data in self.graph.nodes(data=True):
+                if data.get("type") != "section" or data.get("act_frbr_uri") != term.act_frbr_uri:
+                    continue
+                count = len(pattern.findall(data["text"]))
+                if count:
+                    self.graph.add_edge(node_id, term.node_id, key="mentions", type="mentions", count=count)
 
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node
