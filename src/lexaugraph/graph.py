@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,23 @@ def _section_number_from_eid(eid: str) -> str | None:
     if last_segment.startswith("sec-"):
         return last_segment[len("sec-"):]
     return None
+
+
+def _build_entity_mention_pattern(entity_terms: list[DefinedTermNode]) -> re.Pattern | None:
+    """Build one combined, non-overlapping, hyphen-aware regex matching any of
+    the given entity terms' display_term values.
+
+    Terms are sorted longest-first so a qualified variant ("the Registrar") is
+    matched whole, not double-counted via its shorter substring ("Registrar")
+    when both are separately defined DefinedTermNodes in the same Act.
+    Hyphens count as word-continuation characters (via lookaround instead of
+    \\b) so "Registrar-General" never matches bare "Registrar".
+    """
+    if not entity_terms:
+        return None
+    ordered = sorted(entity_terms, key=lambda t: -len(t.display_term))
+    alternation = "|".join(re.escape(t.display_term) for t in ordered)
+    return re.compile(rf"(?<![\w-])(?:{alternation})(?![\w-])")
 
 
 class LexAuGraph:

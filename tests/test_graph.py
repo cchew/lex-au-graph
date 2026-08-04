@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from lexaugraph.graph import LexAuGraph
+from lexaugraph.graph import LexAuGraph, _build_entity_mention_pattern
 from lexaugraph.loader import parse_act
 from lexaugraph.models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode, RelationType
 
@@ -554,3 +554,63 @@ def test_section_number_index_is_scoped_per_act():
 
     assert g.graph.has_edge(act_a_sec_13.node_id, act_a_sec_6.node_id)
     assert not g.graph.has_edge(act_a_sec_13.node_id, act_b_sec_6.node_id)
+
+
+def test_build_entity_mention_pattern_empty_list_returns_none():
+    assert _build_entity_mention_pattern([]) is None
+
+
+def test_build_entity_mention_pattern_matches_bare_term():
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    pattern = _build_entity_mention_pattern([registrar])
+    assert pattern.findall("The Registrar must keep a register.") == ["Registrar"]
+
+
+def test_build_entity_mention_pattern_no_double_count_registrar_variant():
+    # Regression: marriage-act-1961.xml defines both "Registrar" and "the
+    # Registrar" as separate DefinedTermNodes. Independent per-term regex
+    # matching would produce two matches (one per term) for one real text
+    # occurrence of "the Registrar". Longest-first + non-overlapping
+    # matching must produce exactly one match, against "the Registrar"'s node.
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    the_registrar = DefinedTermNode(
+        term="the_registrar", display_term="the Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-6",
+        definition_text="...", entity_type="registrar",
+    )
+    pattern = _build_entity_mention_pattern([registrar, the_registrar])
+    matches = pattern.findall("Notice must be given to the Registrar within 14 days.")
+    assert matches == ["the Registrar"]
+
+
+def test_build_entity_mention_pattern_hyphen_compound_no_false_match():
+    # Regression: plain \bRegistrar\b treats "-" as a boundary, so it
+    # matches inside "Registrar-General". Not live in the corpus today
+    # (no Act currently defines both a bare term and its -General
+    # compound) but must not silently misfire the moment one does.
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    pattern = _build_entity_mention_pattern([registrar])
+    assert pattern.findall("The Registrar-General has no role here.") == []
+    assert pattern.findall("Deputy Registrar-General of Marriage Celebrants.") == []
+
+
+def test_build_entity_mention_pattern_matches_at_string_boundaries():
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    pattern = _build_entity_mention_pattern([registrar])
+    assert pattern.findall("Registrar") == ["Registrar"]
