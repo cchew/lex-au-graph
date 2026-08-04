@@ -10,6 +10,7 @@ import lxml.etree as ET
 
 from .models import ActData, ActNode, DefinedTermNode, RefEdge, SectionNode
 from . import citations, relation_classifier
+from .entities import classify_entity_type
 
 AKN_NS = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0"
 AKN = f"{{{AKN_NS}}}"
@@ -184,6 +185,7 @@ def _extract_defined_terms(
             act_frbr_uri=act_frbr_uri,
             section_eid=section_eid,
             definition_text=def_text,
+            entity_type=classify_entity_type(term_text),
         ))
     return defined_terms
 

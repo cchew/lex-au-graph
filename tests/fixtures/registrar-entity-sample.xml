@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1961/12/!main"/>
+          <FRBRuri value="/akn/au/act/1961/12"/>
+          <FRBRdate date="1961-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1961/12/eng@2026-06-04/!main"/>
+          <FRBRuri value="/akn/au/act/1961/12/eng@2026-06-04"/>
+          <FRBRdate date="2026-06-04" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1961/12/eng@2026-06-04/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1961/12/eng@2026-06-04/!main.akn"/>
+          <FRBRdate date="2026-06-22" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-5">
+          <num>5</num>
+          <heading>Interpretation</heading>
+          <content>
+            <p><term refersTo="#term-registrar">Registrar</term> means <def>a person appointed to register marriages under this Act.</def></p>
+            <p><term refersTo="#term-purpose">purpose</term> means <def>the object for which a thing is done.</def></p>
+          </content>
+        </section>
+        <section eId="part-II__sec-10">
+          <num>10</num>
+          <heading>Functions</heading>
+          <content>
+            <p>The Registrar must keep a register of marriages.</p>
+            <p>The Registrar may delegate this function.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

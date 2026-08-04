@@ -196,3 +196,14 @@ def test_multi_section_list_citation_produces_one_ref_edge_per_section():
     assert all(r.ref_text == "Sections 6 and 13" for r in multi_section_refs)
     assert all(not r.is_cross_act for r in multi_section_refs)
     assert all(r.target_href is None and r.matched_title is None for r in multi_section_refs)
+
+
+def test_extract_defined_terms_classifies_entity_type():
+    index_entry = {
+        "name": "Sample Registrar Act 1961", "year": 1961, "number": 12,
+        "effective_date": "2026-06-04", "xml_path": "xml/registrar-entity-sample.xml",
+    }
+    act_data = parse_act(FIXTURES / "registrar-entity-sample.xml", index_entry)
+    by_term = {t.term: t for t in act_data.defined_terms}
+    assert by_term["registrar"].entity_type == "registrar"
+    assert by_term["purpose"].entity_type is None
