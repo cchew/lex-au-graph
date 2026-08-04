@@ -614,3 +614,142 @@ def test_build_entity_mention_pattern_matches_at_string_boundaries():
     )
     pattern = _build_entity_mention_pattern([registrar])
     assert pattern.findall("Registrar") == ["Registrar"]
+
+
+def _make_registrar_act_data(mention_text_by_section: dict[str, str]) -> ActData:
+    """Build an ActData with one entity-classified DefinedTermNode ("Registrar")
+    defined in the first section, and one SectionNode per (eid, text) pair."""
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sections = [
+        SectionNode(eid=eid, act_frbr_uri="/akn/au/act/1961/12", heading=None, text=text)
+        for eid, text in mention_text_by_section.items()
+    ]
+    first_eid = next(iter(mention_text_by_section))
+    term = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid=first_eid,
+        definition_text="a person appointed to register marriages.",
+        entity_type="registrar",
+    )
+    return ActData(act_node=act, sections=sections, defined_terms=[term], ref_edges=[])
+
+
+def test_add_entity_mentions_creates_edge_with_correct_count():
+    data = _make_registrar_act_data({
+        "part-I__sec-5": "Registrar means a person appointed to register marriages.",
+        "part-II__sec-10": "The Registrar must keep a register. The Registrar may delegate this.",
+    })
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    term_id = "/akn/au/act/1961/12#term-registrar"
+    sec5_id = "/akn/au/act/1961/12#part-I__sec-5"
+    sec10_id = "/akn/au/act/1961/12#part-II__sec-10"
+
+    assert g.graph.nodes[term_id]["entity_type"] == "registrar"
+    assert g.graph.has_edge(sec5_id, term_id, key="mentions")
+    assert g.graph.edges[sec5_id, term_id, "mentions"]["count"] == 1
+    assert g.graph.has_edge(sec10_id, term_id, key="mentions")
+    assert g.graph.edges[sec10_id, term_id, "mentions"]["count"] == 2
+
+
+def test_add_entity_mentions_no_edge_when_zero_matches():
+    data = _make_registrar_act_data({
+        "part-I__sec-5": "Registrar means a person appointed to register marriages.",
+        "part-III__sec-20": "This section has nothing to do with that office.",
+    })
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    term_id = "/akn/au/act/1961/12#term-registrar"
+    sec20_id = "/akn/au/act/1961/12#part-III__sec-20"
+    assert not g.graph.has_edge(sec20_id, term_id, key="mentions")
+
+
+def test_add_entity_mentions_non_entity_term_gets_no_mentions_edges():
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    section = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="purpose means the object for which a thing is done.",
+    )
+    term = DefinedTermNode(
+        term="purpose", display_term="purpose",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="the object for which a thing is done.", entity_type=None,
+    )
+    data = ActData(act_node=act, sections=[section], defined_terms=[term], ref_edges=[])
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    term_id = "/akn/au/act/1961/12#term-purpose"
+    sec_id = "/akn/au/act/1961/12#part-I__sec-5"
+    assert not g.graph.has_edge(sec_id, term_id, key="mentions")
+
+
+def test_add_entity_mentions_double_counting_regression():
+    # Regression: an Act defining both "Registrar" and "the Registrar" as
+    # separate DefinedTermNodes must not produce two mentions edges for one
+    # real text occurrence of "the Registrar".
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sec_def = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Registrar means a person appointed to register marriages.",
+    )
+    sec_qualified_def = SectionNode(
+        eid="part-I__sec-6", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="the Registrar means the person holding office under section 5.",
+    )
+    sec_mention = SectionNode(
+        eid="part-II__sec-10", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Notice must be given to the Registrar within 14 days.",
+    )
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    the_registrar = DefinedTermNode(
+        term="the_registrar", display_term="the Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-6",
+        definition_text="...", entity_type="registrar",
+    )
+    data = ActData(
+        act_node=act, sections=[sec_def, sec_qualified_def, sec_mention],
+        defined_terms=[registrar, the_registrar], ref_edges=[],
+    )
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    registrar_id = "/akn/au/act/1961/12#term-registrar"
+    the_registrar_id = "/akn/au/act/1961/12#term-the_registrar"
+    sec_mention_id = "/akn/au/act/1961/12#part-II__sec-10"
+
+    assert g.graph.has_edge(sec_mention_id, the_registrar_id, key="mentions")
+    assert not g.graph.has_edge(sec_mention_id, registrar_id, key="mentions")
+
+
+def test_add_entity_mentions_hyphen_compound_regression():
+    # Regression: a section mentioning an unrelated hyphenated compound
+    # ("Registrar-General") must not produce a mentions edge to the bare
+    # "Registrar" entity node.
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sec_def = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Registrar means a person appointed to register marriages.",
+    )
+    sec_compound = SectionNode(
+        eid="part-II__sec-10", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="The Registrar-General has no role under this Act.",
+    )
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="...", entity_type="registrar",
+    )
+    data = ActData(act_node=act, sections=[sec_def, sec_compound], defined_terms=[registrar], ref_edges=[])
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    registrar_id = "/akn/au/act/1961/12#term-registrar"
+    sec_compound_id = "/akn/au/act/1961/12#part-II__sec-10"
+    assert not g.graph.has_edge(sec_compound_id, registrar_id, key="mentions")

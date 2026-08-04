@@ -111,11 +111,31 @@ class LexAuGraph:
                 act_frbr_uri=term.act_frbr_uri,
                 section_eid=term.section_eid,
                 definition_text=term.definition_text,
+                entity_type=term.entity_type,
             )
             if term.section_eid:
                 section_id = f"{term.act_frbr_uri}#{term.section_eid}"
                 if section_id in self.graph.nodes:
                     self.graph.add_edge(section_id, term.node_id, key="defines", type="defines")
+
+        self._add_entity_mentions(act_data)
+
+    def _add_entity_mentions(self, act_data: ActData) -> None:
+        entity_terms = [t for t in act_data.defined_terms if t.entity_type]
+        pattern = _build_entity_mention_pattern(entity_terms)
+        if pattern is None:
+            return
+        by_display_term = {t.display_term: t for t in entity_terms}
+        for section in act_data.sections:
+            counts: dict[str, int] = {}
+            for match in pattern.finditer(section.text):
+                counts[match.group(0)] = counts.get(match.group(0), 0) + 1
+            for display_term, count in counts.items():
+                term = by_display_term[display_term]
+                self.graph.add_edge(
+                    section.node_id, term.node_id,
+                    key="mentions", type="mentions", count=count,
+                )
 
     def add_defined_term(self, term: DefinedTermNode) -> None:
         """Add a single verified defined term without re-adding act/section nodes.
