@@ -146,3 +146,53 @@ def get_act_terms(act_frbr_uri: str) -> str:
         act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
     """
     return get_act_terms_tool(act_frbr_uri)
+
+
+def entities_tool(eid: str, act_frbr_uri: str) -> str:
+    if _resolver is None:
+        return "Error: graph not initialised. Run `lexaugraph build` first."
+    results = _resolver.entities_in_section(eid, act_frbr_uri)
+    if not results:
+        return f"No entities mentioned in {eid} in {act_frbr_uri}."
+    lines = [
+        f"- {r['display_term']} ({r['entity_type']}, {r['count']} mention(s))"
+        for r in results
+    ]
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def entities(eid: str, act_frbr_uri: str) -> str:
+    """List entities (offices/agencies) mentioned in a section, via outgoing mentions edges.
+
+    Args:
+        eid: The section eId (e.g. "part-I__sec-13")
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+    """
+    return entities_tool(eid, act_frbr_uri)
+
+
+def find_entity_tool(display_term: str) -> str:
+    if _resolver is None:
+        return "Error: graph not initialised. Run `lexaugraph build` first."
+    results = _resolver.find_entity(display_term)
+    if not results:
+        return f"No entities found for '{display_term}'."
+    lines = [
+        f"- {r['display_term']} ({r['entity_type']}) in {r['act_title']} ({r['section_eid']})"
+        for r in results
+    ]
+    return "Act-scoped homonym matches (not confirmed to be the same real-world office):\n" + "\n".join(lines)
+
+
+@mcp.tool()
+def find_entity(display_term: str) -> str:
+    """Find all entity-classified defined terms across all loaded Acts matching an exact display term.
+
+    Results are Act-scoped homonyms, not confirmed shared identity -- the corpus has no
+    administering-department metadata to confirm two Acts' "Commissioner" are the same office.
+
+    Args:
+        display_term: Exact display text to search for (e.g. "Commissioner")
+    """
+    return find_entity_tool(display_term)

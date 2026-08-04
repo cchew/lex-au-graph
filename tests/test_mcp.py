@@ -25,6 +25,20 @@ def setup_graph():
     mcp_module._resolver = None
 
 
+@pytest.fixture()
+def registrar_graph():
+    index_entry = {
+        "name": "Sample Registrar Act 1961", "year": 1961, "number": 12,
+        "effective_date": "2026-06-04", "xml_path": "xml/registrar-entity-sample.xml",
+    }
+    act_data = parse_act(FIXTURES / "registrar-entity-sample.xml", index_entry)
+    g = LexAuGraph()
+    g.add_act_data(act_data)
+    mcp_module._resolver = DefinitionResolver(g)
+    yield
+    mcp_module._resolver = None
+
+
 def test_resolve_definition_tool_found():
     result = mcp_module.resolve_definition_tool("personal information", "/akn/au/act/1988/119")
     assert "part-I__sec-6" in result
@@ -136,3 +150,37 @@ def test_init_without_centrality_sidecar_omits_percentile(tmp_path: Path):
 
     result = mcp_module.impact_analysis_tool("part-I__sec-6", "/akn/au/act/1988/119")
     assert "percentile" not in result
+
+
+def test_entities_tool_lists_mentions(registrar_graph):
+    result = mcp_module.entities_tool("part-II__sec-10", "/akn/au/act/1961/12")
+    assert "Registrar" in result
+    assert "registrar" in result
+
+
+def test_entities_tool_no_mentions_returns_message(registrar_graph):
+    result = mcp_module.entities_tool("part-I__sec-5", "/akn/au/act/1961/12")
+    assert isinstance(result, str)
+
+
+def test_entities_tool_resolver_none_returns_error():
+    mcp_module._resolver = None
+    result = mcp_module.entities_tool("part-II__sec-10", "/akn/au/act/1961/12")
+    assert "not initialised" in result.lower()
+
+
+def test_find_entity_tool_found(registrar_graph):
+    result = mcp_module.find_entity_tool("Registrar")
+    assert "Sample Registrar Act 1961" in result
+    assert "part-I__sec-5" in result
+
+
+def test_find_entity_tool_not_found(registrar_graph):
+    result = mcp_module.find_entity_tool("nonexistent xyz")
+    assert "No entities found" in result
+
+
+def test_find_entity_tool_resolver_none_returns_error():
+    mcp_module._resolver = None
+    result = mcp_module.find_entity_tool("Registrar")
+    assert "not initialised" in result.lower()
