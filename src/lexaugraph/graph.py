@@ -143,9 +143,18 @@ class LexAuGraph:
 
         Used to backfill untagged prose definitions recovered by the LLM extraction
         pipeline into a graph.json where the Act and its sections already exist.
-        Also classifies entity_type and builds mentions edges against this Act's
+        Also classifies entity_type and rebuilds mentions edges for this Act's
         already-loaded sections, matching the main build path (_add_act_nodes) --
         terms added via this path never go through loader.py's classification.
+
+        Because entity terms can be backfilled one at a time, in any order, mentions
+        are recomputed from the FULL set of this Act's entity-classified terms (not
+        just the one just added) every time -- otherwise a term added in an earlier
+        call has no visibility into a longer, overlapping term added later (or vice
+        versa), and a single-term pattern can spuriously match a substring of a
+        qualified variant (e.g. "Registrar" matching inside "Deputy Registrar").
+        This keeps the result order-independent and consistent with what the batch
+        build path would have produced for the same term set.
         """
         term.entity_type = classify_entity_type(term.display_term)
         self.graph.add_node(
@@ -163,13 +172,67 @@ class LexAuGraph:
             self.graph.add_edge(section_id, term.node_id, key="defines", type="defines")
 
         if term.entity_type:
-            pattern = _build_entity_mention_pattern([term])
-            for node_id, data in self.graph.nodes(data=True):
-                if data.get("type") != "section" or data.get("act_frbr_uri") != term.act_frbr_uri:
-                    continue
-                count = len(pattern.findall(data["text"]))
-                if count:
-                    self.graph.add_edge(node_id, term.node_id, key="mentions", type="mentions", count=count)
+            self._rebuild_entity_mentions_for_act(term.act_frbr_uri)
+
+    def _rebuild_entity_mentions_for_act(self, act_frbr_uri: str) -> None:
+        """Recompute mentions edges for every entity-classified defined_term node
+        belonging to act_frbr_uri, from scratch, using one combined pattern.
+
+        Used by add_defined_term (the incremental backfill path) so that mentions
+        stay order-independent across separate calls -- see add_defined_term's
+        docstring for why a single-term pattern isn't sufficient here.
+        """
+        # Reconstruct lightweight DefinedTermNodes purely to pass to
+        # _build_entity_mention_pattern (reads only .display_term). The real graph
+        # node_id (not the reconstructed node's computed .node_id, which may not
+        # round-trip if occurrence was ever > 1) is tracked alongside by position.
+        entity_term_ids: list[str] = []
+        entity_terms: list[DefinedTermNode] = []
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get("type") != "defined_term" or data.get("act_frbr_uri") != act_frbr_uri:
+                continue
+            if not data.get("entity_type"):
+                continue
+            entity_term_ids.append(node_id)
+            entity_terms.append(DefinedTermNode(
+                term=data["term"],
+                display_term=data["display_term"],
+                act_frbr_uri=data["act_frbr_uri"],
+                section_eid=data["section_eid"],
+                definition_text=data["definition_text"],
+                entity_type=data["entity_type"],
+            ))
+        node_id_by_display_term = dict(zip(
+            (t.display_term for t in entity_terms), entity_term_ids
+        ))
+
+        section_ids = [
+            node_id for node_id, data in self.graph.nodes(data=True)
+            if data.get("type") == "section" and data.get("act_frbr_uri") == act_frbr_uri
+        ]
+
+        # Clean slate: drop any existing mentions edges targeting this Act's entity
+        # terms before re-scanning, so stale/spurious edges from earlier single-term
+        # calls don't linger alongside the freshly computed ones.
+        for section_id in section_ids:
+            for term_id in entity_term_ids:
+                if self.graph.has_edge(section_id, term_id, key="mentions"):
+                    self.graph.remove_edge(section_id, term_id, key="mentions")
+
+        pattern = _build_entity_mention_pattern(entity_terms)
+        if pattern is None:
+            return
+        for section_id in section_ids:
+            text = self.graph.nodes[section_id]["text"]
+            counts: dict[str, int] = {}
+            for match in pattern.finditer(text):
+                counts[match.group(0)] = counts.get(match.group(0), 0) + 1
+            for display_term, count in counts.items():
+                target_id = node_id_by_display_term[display_term]
+                self.graph.add_edge(
+                    section_id, target_id,
+                    key="mentions", type="mentions", count=count,
+                )
 
     def _resolve_refs(self, act_data: ActData) -> None:
         act = act_data.act_node

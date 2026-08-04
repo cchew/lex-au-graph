@@ -455,6 +455,55 @@ def test_add_defined_term_non_entity_term_creates_no_mentions_edges():
     assert mentions_edges == []
 
 
+def test_add_defined_term_reclassifies_mentions_across_backfill_calls_for_overlapping_terms():
+    # Regression: backfilling "Registrar" then "Deputy Registrar" separately must not
+    # let the first call's single-term pattern spuriously match "Registrar" as a
+    # substring inside "Deputy Registrar" text. The combined mentions state must match
+    # what the batch build path (_add_entity_mentions) would produce for both terms
+    # together, longest-first, regardless of call order.
+    act = ActNode(frbr_uri="/akn/au/act/1961/12", title="Sample Registrar Act 1961", year=1961)
+    sec_def_registrar = SectionNode(
+        eid="part-I__sec-5", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Registrar means a person appointed to register marriages.",
+    )
+    sec_def_deputy = SectionNode(
+        eid="part-I__sec-6", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Deputy Registrar means a person appointed to assist the Registrar.",
+    )
+    sec_mention = SectionNode(
+        eid="part-II__sec-10", act_frbr_uri="/akn/au/act/1961/12", heading=None,
+        text="Deputy Registrar attended the hearing.",
+    )
+    data = ActData(
+        act_node=act,
+        sections=[sec_def_registrar, sec_def_deputy, sec_mention],
+        defined_terms=[], ref_edges=[],
+    )
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    registrar = DefinedTermNode(
+        term="registrar", display_term="Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-5",
+        definition_text="a person appointed to register marriages.",
+    )
+    g.add_defined_term(registrar)
+
+    deputy_registrar = DefinedTermNode(
+        term="deputy registrar", display_term="Deputy Registrar",
+        act_frbr_uri="/akn/au/act/1961/12", section_eid="part-I__sec-6",
+        definition_text="a person appointed to assist the Registrar.",
+    )
+    g.add_defined_term(deputy_registrar)
+
+    registrar_id = "/akn/au/act/1961/12#term-registrar"
+    deputy_id = "/akn/au/act/1961/12#term-deputy_registrar"
+    sec_mention_id = "/akn/au/act/1961/12#part-II__sec-10"
+
+    assert g.graph.has_edge(sec_mention_id, deputy_id, key="mentions")
+    assert not g.graph.has_edge(sec_mention_id, registrar_id, key="mentions")
+
+
 FOI_INDEX_ENTRY = {
     "name": "Freedom of Information Act 1982",
     "year": 1982,
