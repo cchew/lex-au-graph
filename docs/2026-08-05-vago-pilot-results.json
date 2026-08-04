@@ -1,0 +1,182 @@
+[
+  {
+    "rule_id": "art6_8_amendment_constraints",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.09523809523809523,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art6_6_delegated_acts_add",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.05128205128205128,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art5_1_c_social_scoring",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex_1_nlf_harmonisation_list",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.06557377049180328,
+    "meanRatioOpinion": 1.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex_1_other_harmonisation_list",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.04411764705882353,
+    "meanRatioOpinion": 1.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art5_1_f_emotion_recognition_work_education",
+    "codifiability": "medium",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art5_2_realtime_biometric_safeguards",
+    "codifiability": "medium",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.05454545454545454,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art6_1_safety_component_highrisk",
+    "codifiability": "medium",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 1.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art6_2_annex3_highrisk",
+    "codifiability": "medium",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.047619047619047616,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "art5_3_realtime_biometric_prior_authorisation",
+    "codifiability": "medium",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.022727272727272728,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex3_7_migration_border",
+    "codifiability": "high",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.02127659574468085,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex3_4_employment",
+    "codifiability": "high",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex3_6_law_enforcement",
+    "codifiability": "high",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.025,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex3_2_critical_infrastructure",
+    "codifiability": "high",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "annex3_1a_remote_biometric_id",
+    "codifiability": "high",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.03333333333333333,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "26WQ-3-declaration-reasonableness",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.044444444444444446,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "26WA-eligible-data-breach-definition",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.0,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "26WQ-7-refusal-notice",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.038461538461538464,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "26WP-3",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.06896551724137931,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  },
+  {
+    "rule_id": "26WR-6-relevant-considerations",
+    "codifiability": "low",
+    "meanRatioVague": 1.0,
+    "meanRatioPrecis": 0.029411764705882353,
+    "meanRatioOpinion": 0.0,
+    "vagueSentences": 1,
+    "totalSentences": 1
+  }
+]
