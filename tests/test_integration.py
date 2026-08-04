@@ -87,3 +87,54 @@ def test_save_load_roundtrip(full_graph: LexAuGraph, tmp_path: Path):
     loaded = LexAuGraph.load(path)
     assert loaded.graph.number_of_nodes() == full_graph.graph.number_of_nodes()
     assert loaded.graph.number_of_edges() == full_graph.graph.number_of_edges()
+
+
+def test_privacy_act_entity_classification(full_graph: LexAuGraph):
+    # Privacy Act 1988 defines "Commissioner" and "Secretary" as entity-classified
+    # terms, but no "Minister" or "Registrar" term at all (confirmed 2026-08-04
+    # independent review — the design spec's original worked example incorrectly
+    # cited numbers for these two, since this Act never defines them).
+    commissioner_id = "/akn/au/act/1988/119#term-commissioner"
+    secretary_id = "/akn/au/act/1988/119#term-secretary"
+    assert full_graph.graph.nodes[commissioner_id]["entity_type"] == "commissioner"
+    assert full_graph.graph.nodes[secretary_id]["entity_type"] == "secretary"
+
+
+def test_privacy_act_secretary_mention_count(full_graph: LexAuGraph):
+    # Small, stable real number, independently verified 2026-08-04 against the
+    # real corpus via the exact combined-regex algorithm this feature implements.
+    secretary_id = "/akn/au/act/1988/119#term-secretary"
+    total = sum(
+        d["count"] for u, v, d in full_graph.graph.in_edges(secretary_id, data=True)
+        if d.get("type") == "mentions"
+    )
+    sections = sum(
+        1 for u, v, d in full_graph.graph.in_edges(secretary_id, data=True)
+        if d.get("type") == "mentions"
+    )
+    assert total == 3
+    assert sections == 2
+
+
+def test_privacy_act_commissioner_mention_count_ballpark(full_graph: LexAuGraph):
+    # Larger number, loose bound to tolerate implementation-detail variance
+    # (e.g. exact overlap resolution between "Commissioner" and "Commissioner
+    # of Police") without hard-coding a brittle exact figure.
+    commissioner_id = "/akn/au/act/1988/119#term-commissioner"
+    total = sum(
+        d["count"] for u, v, d in full_graph.graph.in_edges(commissioner_id, data=True)
+        if d.get("type") == "mentions"
+    )
+    assert total > 600
+
+
+def test_entity_yield_across_corpus(full_graph: LexAuGraph):
+    # Real corpus-wide yield, independently verified 2026-08-04: 1,880 of 29,254
+    # total defined terms (6.4%) classify as an entity, out of 3,078 files, 0
+    # parse errors. Loose lower bound (not an exact match) to tolerate the
+    # corpus growing between this test's writing and a future lex-au ingest.
+    entity_count = sum(
+        1 for _, data in full_graph.graph.nodes(data=True)
+        if data.get("type") == "defined_term" and data.get("entity_type")
+    )
+    assert entity_count >= 1800

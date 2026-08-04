@@ -20,14 +20,17 @@ Full stack map: [lex-au-search's `STACK.md`](https://github.com/cchew/lex-au-sea
 Builds a directed graph over the lex-au AKN corpus:
 
 - **Nodes:** Act, Section, DefinedTerm
-- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act — each carries one or more classified citations: `amends`/`repeals`/`cites`/`references_definition`, with a relation-confidence and an extraction-confidence score per citation), `defines` (Section→DefinedTerm)
+- **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act — each carries one or more classified citations: `amends`/`repeals`/`cites`/`references_definition`, with a relation-confidence and an extraction-confidence score per citation), `defines` (Section→DefinedTerm), `mentions` (Section→DefinedTerm, for DefinedTerms classified as an entity — office/agency — with a `count` of matched occurrences in that section's text)
 
-Exposes four MCP tools:
+Exposes seven MCP tools:
 
 - `resolve_definition(term, act_frbr_uri)` - canonical definition text and section citation for a defined term within an Act
 - `cross_references(eid, act_frbr_uri)` - all outgoing cross-references from a section
 - `find_all_definitions(term)` - all definitions of a term across all loaded Acts (useful when the Act is unknown or a term is defined in multiple Acts)
 - `get_act_terms(act_frbr_uri)` - all defined terms in an Act, sorted alphabetically
+- `impact_analysis(eid, act_frbr_uri, max_hops)` - everything that transitively cites a section (reverse-reachability fan-in)
+- `entities(eid, act_frbr_uri)` - entities (offices/agencies) mentioned in a section
+- `find_entity(display_term)` - Act-scoped entity homonym search across all loaded Acts
 
 ## Motivation
 
@@ -68,6 +71,12 @@ lexaugraph centrality
 # Show what's affected if a section changes (reverse-reachability fan-in)
 lexaugraph impact --eid "part-I__sec-6" --act "/akn/au/act/1988/119"
 
+# List entities (offices/agencies) mentioned in a section
+lexaugraph entities --eid "part-I__sec-6" --act "/akn/au/act/1988/119"
+
+# Find all Act-scoped entities matching a display term
+lexaugraph find-entity --term "Commissioner"
+
 # Backfill untagged prose definitions for one Act via grounded LLM extraction
 lexaugraph extract-untagged --xml /path/to/act.xml --act-frbr-uri "/akn/au/act/1988/119"
 
@@ -81,7 +90,7 @@ lexaugraph serve
 lexaugraph serve --graph graph.json
 ```
 
-Registers five tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
+Registers seven tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
 
 ## Versions
 
@@ -104,6 +113,7 @@ Registers five tools on a FastMCP server. Connect via any MCP client (Claude Des
 - `find_all_definitions` returns results in graph iteration order (non-deterministic across rebuilds if node insertion order changes).
 - Graph is a static snapshot; re-run `lexaugraph build` after corpus updates.
 - Relation classification (`amends`/`repeals`/`cites`/`references_definition`) uses a regex verb-proximity heuristic (±80-character window around each citation, excluding the citation's own text) with an opt-in LLM fallback for ambiguous cases (`lexaugraph build --llm-fallback`, off by default — real Anthropic API cost). Window size and confidence thresholds are a first-pass calibration, not independently validated against a labelled dataset — see `scripts/verify_relation_classification.py` for real-corpus sampling.
+- Entity mention-matching resolves same-span double-counting (e.g. an Act defining both "Registrar" and "the Registrar" no longer produces two edges for one text occurrence) but does not merge same-Act term variants into one node — "Registrar" and "the Registrar" remain permanently distinct entities. Cross-Act entity identity resolution (confirming two Acts' "Commissioner" are the same real-world office) is not attempted at all — no corpus data supports it.
 
 ## License
 
