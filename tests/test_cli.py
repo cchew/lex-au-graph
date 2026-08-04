@@ -144,3 +144,62 @@ def test_build_without_llm_fallback_flag_does_not_construct_client(tmp_path: Pat
     result = runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(output)])
 
     assert result.exit_code == 0, result.output
+
+
+def _make_registrar_corpus(tmp_path: Path) -> Path:
+    corpus_dir = tmp_path / "registrar_corpus"
+    xml_dir = corpus_dir / "xml"
+    xml_dir.mkdir(parents=True)
+    shutil.copy(FIXTURES / "registrar-entity-sample.xml", xml_dir / "registrar-entity-sample.xml")
+    index = {
+        "acts": {
+            "registrar-entity-sample": {
+                "name": "Sample Registrar Act 1961",
+                "year": 1961,
+                "number": 12,
+                "effective_date": "2026-06-04",
+                "xml_path": "xml/registrar-entity-sample.xml",
+            },
+        }
+    }
+    (corpus_dir / "index.json").write_text(json.dumps(index))
+    return corpus_dir
+
+
+def test_entities_prints_mentioned_entities(tmp_path: Path):
+    corpus_dir = _make_registrar_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, [
+        "entities", "--eid", "part-II__sec-10", "--act", "/akn/au/act/1961/12",
+        "--graph", str(graph_path),
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert "Registrar" in result.output
+
+
+def test_find_entity_prints_act_scoped_matches(tmp_path: Path):
+    corpus_dir = _make_registrar_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, [
+        "find-entity", "--term", "Registrar", "--graph", str(graph_path),
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert "Sample Registrar Act 1961" in result.output
+
+
+def test_find_entity_no_match_exits_nonzero(tmp_path: Path):
+    corpus_dir = _make_registrar_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, [
+        "find-entity", "--term", "nonexistent xyz", "--graph", str(graph_path),
+    ])
+
+    assert result.exit_code == 1

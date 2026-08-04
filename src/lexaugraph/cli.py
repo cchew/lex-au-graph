@@ -115,6 +115,44 @@ def resolve(
 
 
 @app.command()
+def entities(
+    eid: str = typer.Option(..., "--eid", help="Section eId to list mentioned entities for"),
+    act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+) -> None:
+    """List entities (offices/agencies) mentioned in a section."""
+    from .graph import LexAuGraph
+    from .resolver import DefinitionResolver
+    g = LexAuGraph.load(graph)
+    resolver = DefinitionResolver(g)
+    results = resolver.entities_in_section(eid, act)
+    if not results:
+        typer.echo(f"No entities mentioned in {eid} in {act}.")
+        return
+    for r in results:
+        typer.echo(f"{r['display_term']} ({r['entity_type']}, {r['count']} mention(s))")
+
+
+@app.command(name="find-entity")
+def find_entity(
+    term: str = typer.Option(..., "--term", "-t", help="Exact display term to search for"),
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+) -> None:
+    """Find all Act-scoped entities matching a display term (homonym search, not identity resolution)."""
+    from .graph import LexAuGraph
+    from .resolver import DefinitionResolver
+    g = LexAuGraph.load(graph)
+    resolver = DefinitionResolver(g)
+    results = resolver.find_entity(term)
+    if not results:
+        typer.echo(f"No entities found for '{term}'.")
+        raise typer.Exit(1)
+    typer.echo("Act-scoped homonym matches (not confirmed to be the same real-world office):")
+    for r in results:
+        typer.echo(f"- {r['display_term']} ({r['entity_type']}) in {r['act_title']} ({r['section_eid']})")
+
+
+@app.command()
 def extract_untagged(
     xml_path: Path = typer.Option(..., "--xml", help="Path to the Act's AKN XML file"),
     act_frbr_uri: str = typer.Option(..., "--act-frbr-uri", help="FRBR URI of the Act (must already exist in the graph)"),
