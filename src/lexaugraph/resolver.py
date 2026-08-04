@@ -175,6 +175,54 @@ class DefinitionResolver:
             })
         return sorted(results, key=lambda r: r["term"])
 
+    def entities_in_section(self, eid: str, act_frbr_uri: str) -> list[dict[str, Any]]:
+        """Entities (offices/agencies) mentioned in a given section, via outgoing
+        mentions edges. Includes the entity's own defining section if it mentions
+        itself in its definition text (mentions edges are not defines-exclusive)."""
+        section_id = f"{act_frbr_uri}#{eid}"
+        results = []
+        for _, target, data in self._graph.graph.out_edges(section_id, data=True):
+            if data.get("type") != "mentions":
+                continue
+            target_data = self._graph.graph.nodes.get(target, {})
+            results.append({
+                "node_id": target,
+                "display_term": target_data.get("display_term", ""),
+                "entity_type": target_data.get("entity_type"),
+                "count": data.get("count", 0),
+            })
+        return results
+
+    def find_entity(self, display_term: str) -> list[dict[str, Any]]:
+        """Find all entity-classified defined terms across all loaded Acts matching
+        display_term, exactly.
+
+        Cross-Act canonicalization is NOT attempted: the corpus has no
+        administering-department metadata, so two Acts' "Commissioner" terms
+        cannot be confirmed as the same real-world office from corpus data
+        alone. Results are Act-scoped homonyms, not confirmed shared identity --
+        any consumer surfacing this must not imply otherwise.
+        """
+        results = []
+        for node_id, data in self._graph.graph.nodes(data=True):
+            if data.get("type") != "defined_term":
+                continue
+            if data.get("entity_type") is None:
+                continue
+            if data.get("display_term") != display_term:
+                continue
+            act_frbr_uri = data.get("act_frbr_uri", "")
+            act_data = self._graph.graph.nodes.get(act_frbr_uri, {})
+            results.append({
+                "node_id": node_id,
+                "display_term": data.get("display_term", ""),
+                "entity_type": data.get("entity_type"),
+                "act_frbr_uri": act_frbr_uri,
+                "act_title": act_data.get("title", act_frbr_uri),
+                "section_eid": data.get("section_eid", ""),
+            })
+        return results
+
     def list_multi_act_terms(self, min_acts: int = 3) -> list[MultiActTermSummary]:
         """Group defined_term nodes by term across all Acts, for the browse-list UI.
 

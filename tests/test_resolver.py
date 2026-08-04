@@ -455,3 +455,46 @@ def test_resolve_definition_no_section_eid_keeps_old_behaviour(collision_resolve
     # match, not None, for every existing caller (cli.py, mcp.py).
     result = collision_resolver.resolve_definition("levy", "/akn/au/act/2026/1")
     assert result is not None
+
+
+@pytest.fixture()
+def registrar_resolver() -> DefinitionResolver:
+    index_entry = {
+        "name": "Sample Registrar Act 1961", "year": 1961, "number": 12,
+        "effective_date": "2026-06-04", "xml_path": "xml/registrar-entity-sample.xml",
+    }
+    act_data = parse_act(FIXTURES / "registrar-entity-sample.xml", index_entry)
+    g = LexAuGraph()
+    g.add_act_data(act_data)
+    return DefinitionResolver(g)
+
+
+def test_entities_in_section_finds_mentioned_entity(registrar_resolver: DefinitionResolver):
+    results = registrar_resolver.entities_in_section("part-II__sec-10", "/akn/au/act/1961/12")
+    assert len(results) == 1
+    assert results[0]["display_term"] == "Registrar"
+    assert results[0]["entity_type"] == "registrar"
+    assert results[0]["count"] == 2
+
+
+def test_entities_in_section_empty_for_section_with_no_mentions(registrar_resolver: DefinitionResolver):
+    # part-I__sec-5 defines both "Registrar" and "purpose"; "purpose" is
+    # non-entity so only Registrar's defining-section self-mention shows up.
+    results = registrar_resolver.entities_in_section("part-I__sec-5", "/akn/au/act/1961/12")
+    assert [r["display_term"] for r in results] == ["Registrar"]
+
+
+def test_find_entity_returns_act_scoped_result(registrar_resolver: DefinitionResolver):
+    results = registrar_resolver.find_entity("Registrar")
+    assert len(results) == 1
+    assert results[0]["entity_type"] == "registrar"
+    assert results[0]["act_title"] == "Sample Registrar Act 1961"
+    assert results[0]["section_eid"] == "part-I__sec-5"
+
+
+def test_find_entity_excludes_non_entity_terms(registrar_resolver: DefinitionResolver):
+    assert registrar_resolver.find_entity("purpose") == []
+
+
+def test_find_entity_no_match_returns_empty_list(registrar_resolver: DefinitionResolver):
+    assert registrar_resolver.find_entity("nonexistent xyz") == []
