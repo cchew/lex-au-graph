@@ -192,3 +192,21 @@ def test_ref_edge_extraction_confidence_label_property():
         extraction_confidence=0.4,
     )
     assert r.extraction_confidence_label == "low"
+
+
+def test_defined_term_node_entity_type_defaults_to_none():
+    term = DefinedTermNode(
+        term="personal information", display_term="personal information",
+        act_frbr_uri="/akn/au/act/1988/119", section_eid="part-I__sec-6",
+        definition_text="...",
+    )
+    assert term.entity_type is None
+
+
+def test_defined_term_node_entity_type_can_be_set():
+    term = DefinedTermNode(
+        term="commissioner", display_term="Commissioner",
+        act_frbr_uri="/akn/au/act/1988/119", section_eid="part-I__sec-6",
+        definition_text="...", entity_type="commissioner",
+    )
+    assert term.entity_type == "commissioner"

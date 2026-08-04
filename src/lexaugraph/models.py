@@ -57,6 +57,7 @@ class DefinedTermNode:
     section_eid: str
     definition_text: str
     occurrence: int = 1
+    entity_type: Optional[str] = None
 
     @property
     def node_id(self) -> str:
