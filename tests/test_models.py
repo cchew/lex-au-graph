@@ -210,3 +210,22 @@ def test_defined_term_node_entity_type_can_be_set():
         definition_text="...", entity_type="commissioner",
     )
     assert term.entity_type == "commissioner"
+
+
+def test_act_complexity_holds_all_four_metrics():
+    from lexaugraph.models import ActComplexity
+    c = ActComplexity(
+        act_frbr_uri="/akn/au/act/1988/119",
+        title="Privacy Act 1988",
+        pagerank_centrality=0.0125,
+        raw_citation_count=42,
+        defined_term_count=10,
+        defined_term_density=0.005,
+        indeterminate_concept_count=3,
+        indeterminate_concept_density=0.0015,
+        conditional_statement_count=7,
+        conditional_statement_density=0.0035,
+        word_count=2000,
+    )
+    assert c.act_frbr_uri == "/akn/au/act/1988/119"
+    assert c.word_count == 2000

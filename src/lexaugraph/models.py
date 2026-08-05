@@ -120,3 +120,22 @@ class ImpactedNode:
     hop: int
     path_weight: float
     ref_texts: list[str]
+
+
+@dataclass
+class ActComplexity:
+    act_frbr_uri: str
+    title: str
+    # 1. Cross-reference
+    pagerank_centrality: float
+    raw_citation_count: int
+    # 2. Defined-term density
+    defined_term_count: int
+    defined_term_density: float
+    # 3. Indeterminate-concept frequency (ALRC: reasonableness + good faith + unfair + fair + unjust)
+    indeterminate_concept_count: int
+    indeterminate_concept_density: float
+    # 4. Conditional-statement frequency (ALRC's 9-word list)
+    conditional_statement_count: int
+    conditional_statement_density: float
+    word_count: int
