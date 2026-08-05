@@ -8,6 +8,9 @@ coverage.json
 htmlcov/
 graph.json
 graph.json.bak
+codifiability.json
+complexity.json
+centrality.json
 .pytest_cache/
 .superpowers/
 .env
