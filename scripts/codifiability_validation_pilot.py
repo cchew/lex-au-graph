@@ -66,25 +66,38 @@ def correlate(a: list[float], b: list[float]) -> dict[str, float | int]:
 
 def run_validation(alrc_df: pd.DataFrame, graph: LexAuGraph) -> dict:
     matches = match_acts(alrc_df, graph)
-    alrc_values: list[float] = []
-    live_values: list[float] = []
-    for idx, act_frbr_uri in matches.items():
-        if "Obligations_word_count" not in alrc_df.columns:
-            break
-        live = compute_live_density(graph, act_frbr_uri)
-        alrc_values.append(float(alrc_df.loc[idx, "Obligations_word_count"]))
-        live_values.append(float(live["obligations_7word"]))
-
     result = {"matched_acts": len(matches)}
-    if len(alrc_values) >= 2:
-        result["obligations_7word_vs_alrc"] = correlate(alrc_values, live_values)
+
+    if "Obligations_word_count" not in alrc_df.columns:
+        result["obligations_7word_vs_alrc"] = {
+            "pearson": None,
+            "spearman": None,
+            "n": 0,
+            "note": "Obligations_word_count column not found in ALRC export",
+        }
+        result["live_regdata_5word_total"] = None
     else:
-        result["obligations_7word_vs_alrc"] = {"pearson": None, "spearman": None, "n": len(alrc_values)}
+        alrc_values: list[float] = []
+        live_values: list[float] = []
+        regdata_5word_total = 0
+        for idx, act_frbr_uri in matches.items():
+            live = compute_live_density(graph, act_frbr_uri)
+            alrc_values.append(float(alrc_df.loc[idx, "Obligations_word_count"]))
+            live_values.append(float(live["obligations_7word"]))
+            regdata_5word_total += live["regdata_5word"]
+
+        if len(alrc_values) >= 2:
+            result["obligations_7word_vs_alrc"] = correlate(alrc_values, live_values)
+        else:
+            result["obligations_7word_vs_alrc"] = {"pearson": None, "spearman": None, "n": len(alrc_values)}
+        result["live_regdata_5word_total"] = regdata_5word_total
+
     result["note"] = (
         "RDAU1.0 (RegData Australia's own 5-word dataset) cross-correlation requires a "
         "second downloaded dataset, not automated by this script -- run manually with "
         "the same match_acts/compute_live_density helpers against RDAU1.0's export once "
-        "downloaded."
+        "downloaded. live_regdata_5word_total is the live corpus's 5-word count summed "
+        "across matched Acts, computed here for reuse by that manual step."
     )
     return result
 
@@ -103,6 +116,7 @@ def main() -> None:
     args.output.write_text(json.dumps(results, indent=2))
     print(f"Matched {results['matched_acts']} Acts against ALRC's Dec-2022 export.")
     print(results["obligations_7word_vs_alrc"])
+    print(f"  live_regdata_5word_total={results['live_regdata_5word_total']}")
 
 
 if __name__ == "__main__":
