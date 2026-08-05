@@ -11,10 +11,11 @@ from .resolver import DefinitionResolver
 mcp = FastMCP("lex-au-graph")
 _resolver: Optional[DefinitionResolver] = None
 _complexity: Optional[dict[str, dict]] = None
+_codifiability: Optional[dict[str, dict]] = None
 
 
 def init(graph_path: Path) -> None:
-    global _resolver, _complexity
+    global _resolver, _complexity, _codifiability
     graph = LexAuGraph.load(graph_path)
     centrality_path = graph_path.parent / "centrality.json"
     centrality = json.loads(centrality_path.read_text()) if centrality_path.exists() else None
@@ -26,6 +27,13 @@ def init(graph_path: Path) -> None:
         _complexity = {r["act_frbr_uri"]: r for r in records}
     else:
         _complexity = None
+
+    codifiability_path = graph_path.parent / "codifiability.json"
+    if codifiability_path.exists():
+        records = json.loads(codifiability_path.read_text())
+        _codifiability = {f"{r['act_frbr_uri']}#{r['eid']}": r for r in records}
+    else:
+        _codifiability = None
 
 
 def resolve_definition_tool(term: str, act_frbr_uri: str) -> str:
@@ -237,3 +245,75 @@ def complexity_metrics(act_frbr_uri: str) -> str:
         act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
     """
     return complexity_metrics_tool(act_frbr_uri)
+
+
+def codifiability_signals_tool(eid: str, act_frbr_uri: str) -> str:
+    if _codifiability is None:
+        return "Error: codifiability signals not available. Run `lexaugraph codifiability` first."
+    record = _codifiability.get(f"{act_frbr_uri}#{eid}")
+    if record is None:
+        return f"No codifiability signals found for {eid} in {act_frbr_uri}."
+    llm_part = (
+        f"{record['llm_tag']} ({record['llm_reasoning']})" if record["llm_tag"]
+        else "not computed (run with --llm-signals)"
+    )
+    vagueness_part = (
+        f"{record['vagueness_tag']} ({record['vagueness_reasoning']})" if record["vagueness_tag"]
+        else "not computed (run with --llm-signals)"
+    )
+    return (
+        f"**{eid}** ({act_frbr_uri})\n\n"
+        f"- LLM codifiability tag: {llm_part}\n"
+        f"- Vagueness tag: {vagueness_part}\n"
+        f"- Prescriptive density: {record['prescriptive_density_count']} matches (7-word), "
+        f"{record['prescriptive_density_regdata_subset_count']} matches (RegData 5-word subset), "
+        f"tag: {record['prescriptive_density_tag']}\n"
+        f"- Agreement: {record['agreement']}\n"
+        f"- Parse verification: {record['parse_verification_status']}"
+    )
+
+
+@mcp.tool()
+def codifiability_signals(eid: str, act_frbr_uri: str) -> str:
+    """Report per-provision codifiability signals -- LLM codifiability tag, vagueness
+    tag, prescriptive-language density, and their agreement -- for one section.
+
+    Args:
+        eid: The section eId (e.g. "part-I__sec-13")
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+    """
+    return codifiability_signals_tool(eid, act_frbr_uri)
+
+
+def codifiability_act_summary_tool(act_frbr_uri: str) -> str:
+    if _codifiability is None:
+        return "Error: codifiability signals not available. Run `lexaugraph codifiability` first."
+    records = [r for r in _codifiability.values() if r["act_frbr_uri"] == act_frbr_uri]
+    if not records:
+        return f"No codifiability signals found for {act_frbr_uri}."
+    scored = [r for r in records if r["llm_tag"] is not None]
+    if not scored:
+        bucket_summary = "not computed (run with --llm-signals)"
+    else:
+        counts = {"low": 0, "medium": 0, "high": 0}
+        for r in scored:
+            counts[r["llm_tag"]] += 1
+        total = len(scored)
+        bucket_summary = ", ".join(f"{k}: {v / total * 100:.1f}%" for k, v in counts.items())
+    status = records[0]["parse_verification_status"]
+    return (
+        f"**{act_frbr_uri}** -- {len(records)} scored provisions\n\n"
+        f"- LLM codifiability breakdown: {bucket_summary}\n"
+        f"- Parse verification status: {status}"
+    )
+
+
+@mcp.tool()
+def codifiability_act_summary(act_frbr_uri: str) -> str:
+    """Report the Act-level codifiability rollup -- percentage of scored provisions
+    in each LLM codifiability bucket, plus the Act's parse-verification status.
+
+    Args:
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+    """
+    return codifiability_act_summary_tool(act_frbr_uri)

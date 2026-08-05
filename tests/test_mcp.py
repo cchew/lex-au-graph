@@ -222,3 +222,85 @@ def test_complexity_metrics_tool_found():
     result = mcp_module.complexity_metrics_tool("/akn/au/act/1988/119")
     assert "Privacy Act 1988" in result
     assert "3" in result  # raw_citation_count
+
+
+@pytest.fixture(autouse=True)
+def reset_codifiability():
+    yield
+    mcp_module._codifiability = None
+
+
+def test_codifiability_signals_tool_not_initialised():
+    mcp_module._codifiability = None
+    result = mcp_module.codifiability_signals_tool("sec-1", "/akn/au/act/1988/119")
+    assert "not available" in result
+
+
+def test_codifiability_signals_tool_unknown_provision():
+    mcp_module._codifiability = {}
+    result = mcp_module.codifiability_signals_tool("sec-1", "/akn/au/act/1988/119")
+    assert "No codifiability signals found" in result
+
+
+def test_codifiability_signals_tool_found_with_llm_signals():
+    mcp_module._codifiability = {
+        "/akn/au/act/1988/119#sec-1": {
+            "eid": "sec-1", "act_frbr_uri": "/akn/au/act/1988/119",
+            "llm_tag": "high", "llm_reasoning": "clear obligation",
+            "vagueness_tag": "low", "vagueness_reasoning": "no vague terms",
+            "prescriptive_density_count": 3, "prescriptive_density_regdata_subset_count": 2,
+            "prescriptive_density_tag": "medium", "agreement": "partial",
+            "parse_verification_status": "not_yet_checked",
+        }
+    }
+    result = mcp_module.codifiability_signals_tool("sec-1", "/akn/au/act/1988/119")
+    assert "high" in result
+    assert "clear obligation" in result
+    assert "partial" in result
+
+
+def test_codifiability_signals_tool_found_without_llm_signals_shows_not_computed_hint():
+    mcp_module._codifiability = {
+        "/akn/au/act/1988/119#sec-1": {
+            "eid": "sec-1", "act_frbr_uri": "/akn/au/act/1988/119",
+            "llm_tag": None, "llm_reasoning": None,
+            "vagueness_tag": None, "vagueness_reasoning": None,
+            "prescriptive_density_count": 1, "prescriptive_density_regdata_subset_count": 0,
+            "prescriptive_density_tag": "low", "agreement": "not_computed",
+            "parse_verification_status": "not_yet_checked",
+        }
+    }
+    result = mcp_module.codifiability_signals_tool("sec-1", "/akn/au/act/1988/119")
+    assert "--llm-signals" in result
+
+
+def test_codifiability_act_summary_tool_not_initialised():
+    mcp_module._codifiability = None
+    result = mcp_module.codifiability_act_summary_tool("/akn/au/act/1988/119")
+    assert "not available" in result
+
+
+def test_codifiability_act_summary_tool_computes_bucket_percentages():
+    mcp_module._codifiability = {
+        "/akn/au/act/1988/119#sec-1": {
+            "eid": "sec-1", "act_frbr_uri": "/akn/au/act/1988/119",
+            "llm_tag": "high", "llm_reasoning": "x",
+            "vagueness_tag": "low", "vagueness_reasoning": "x",
+            "prescriptive_density_count": 3, "prescriptive_density_regdata_subset_count": 2,
+            "prescriptive_density_tag": "medium", "agreement": "partial",
+            "parse_verification_status": "spot_checked",
+        },
+        "/akn/au/act/1988/119#sec-2": {
+            "eid": "sec-2", "act_frbr_uri": "/akn/au/act/1988/119",
+            "llm_tag": "low", "llm_reasoning": "x",
+            "vagueness_tag": "high", "vagueness_reasoning": "x",
+            "prescriptive_density_count": 0, "prescriptive_density_regdata_subset_count": 0,
+            "prescriptive_density_tag": "low", "agreement": "full",
+            "parse_verification_status": "spot_checked",
+        },
+    }
+    result = mcp_module.codifiability_act_summary_tool("/akn/au/act/1988/119")
+    assert "2 scored provisions" in result
+    assert "high: 50.0%" in result
+    assert "low: 50.0%" in result
+    assert "spot_checked" in result
