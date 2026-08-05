@@ -97,9 +97,11 @@ def run_validation(rules: list[dict], graph: LexAuGraph, client: anthropic.Anthr
     per_domain_confusion: dict[str, dict[str, dict[str, int]]] = {}
     agree_count = 0
     scored_count = 0
+    batch_failed_count = 0
     for rule, _text in resolved:
         our_result = results.get(rule["rule_id"])
         if our_result is None:
+            batch_failed_count += 1
             continue
         scored_count += 1
         their_tag = rule["codifiability"]
@@ -116,6 +118,7 @@ def run_validation(rules: list[dict], graph: LexAuGraph, client: anthropic.Anthr
         "total_rules": len(rules),
         "unresolved_count": unresolved_count,
         "scored_count": scored_count,
+        "batch_failed_count": batch_failed_count,
         "agreement_rate": agree_count / scored_count if scored_count else None,
         "confusion_matrix": confusion,
         "per_domain_confusion_matrix": per_domain_confusion,
@@ -140,7 +143,7 @@ def main() -> None:
     results = run_validation(rules, graph, client)
 
     args.output.write_text(json.dumps(results, indent=2))
-    print(f"Total ClauseKit rules: {results['total_rules']}, resolved to real text: {results['scored_count']}, unresolved: {results['unresolved_count']}")
+    print(f"Total ClauseKit rules: {results['total_rules']}, resolved to real text: {results['scored_count']}, unresolved: {results['unresolved_count']}, batch failed: {results['batch_failed_count']}")
     print(f"Agreement rate: {results['agreement_rate']}")
 
 
