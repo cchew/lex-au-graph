@@ -123,3 +123,52 @@ def test_word_count_sums_section_text_word_counts():
 def test_word_count_empty_section_list_returns_zero():
     g = _base_graph()
     assert _word_count(g, []) == 0
+
+
+from lexaugraph.complexity import (  # noqa: E402
+    _conditional_statement_count,
+    _indeterminate_concept_count,
+)
+
+
+def test_conditional_statement_count_matches_alrc_word_list():
+    g = nx.MultiDiGraph()
+    text = (
+        "If a person applies, the Secretary may grant approval unless the "
+        "application is incomplete."
+    )
+    g.add_node("/akn/au/act/2000/1#sec-1", type="section", act_frbr_uri="/akn/au/act/2000/1", text=text)
+    count = _conditional_statement_count(g, ["/akn/au/act/2000/1#sec-1"])
+    assert count == 2  # "If" (case-insensitive) + "unless"
+
+
+def test_conditional_statement_count_zero_when_no_matches():
+    g = nx.MultiDiGraph()
+    g.add_node(
+        "/akn/au/act/2000/1#sec-1", type="section",
+        act_frbr_uri="/akn/au/act/2000/1", text="The Secretary is appointed.",
+    )
+    assert _conditional_statement_count(g, ["/akn/au/act/2000/1#sec-1"]) == 0
+
+
+def test_indeterminate_concept_count_sums_all_five_alrc_patterns():
+    g = nx.MultiDiGraph()
+    text = (
+        "The Secretary must act reasonably and in good faith, and must not "
+        "act unfairly."
+    )
+    g.add_node("/akn/au/act/2000/1#sec-1", type="section", act_frbr_uri="/akn/au/act/2000/1", text=text)
+    count = _indeterminate_concept_count(g, ["/akn/au/act/2000/1#sec-1"])
+    # reasonabl\w* -> "reasonably" (1); good faith -> "good faith" (1);
+    # unfair\w* -> "unfairly" (1); fair\w* -> "fairly" inside "unfairly" too,
+    # per ALRC's own unanchored pattern (1); unjust\w* -> no match (0). Total 4.
+    assert count == 4
+
+
+def test_indeterminate_concept_count_zero_when_no_matches():
+    g = nx.MultiDiGraph()
+    g.add_node(
+        "/akn/au/act/2000/1#sec-1", type="section",
+        act_frbr_uri="/akn/au/act/2000/1", text="The Secretary is appointed.",
+    )
+    assert _indeterminate_concept_count(g, ["/akn/au/act/2000/1#sec-1"]) == 0

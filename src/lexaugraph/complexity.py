@@ -48,3 +48,42 @@ def _defined_term_count(graph: nx.MultiDiGraph, act_frbr_uri: str) -> int:
 
 def _word_count(graph: nx.MultiDiGraph, section_ids: list[str]) -> int:
     return sum(len(graph.nodes[sid]["text"].split()) for sid in section_ids)
+
+
+# ALRC's exact word list for Conditional_statements_word_count, per their
+# Explanatory Note (alrc.gov.au/wp-content/uploads/2022/12/Explanatory-Note-
+# Complexity-and-linguistic-data.pdf, fetched 2026-08-05).
+_CONDITIONAL_STATEMENT_WORDS = [
+    "if", "except", "but", "provided", "when", "where", "whenever",
+    "unless", "notwithstanding",
+]
+_CONDITIONAL_STATEMENT_PATTERN = re.compile(
+    r"\b(?:" + "|".join(_CONDITIONAL_STATEMENT_WORDS) + r")\b", re.IGNORECASE
+)
+
+# ALRC has no single "indeterminate concept" list -- five separate word-count
+# columns, combined here into one metric. "fair" is deliberately NOT
+# left-boundary-anchored, matching ALRC's own 'fair.*' regex which also
+# matches inside "unfair" -- preserved for validation fidelity against their
+# published numbers, not "fixed".
+_INDETERMINATE_CONCEPT_PATTERNS = [
+    re.compile(r"reasonabl\w*", re.IGNORECASE),  # Reasonableness_word_count
+    re.compile(r"good faith", re.IGNORECASE),    # Good_faith_word_count
+    re.compile(r"unfair\w*", re.IGNORECASE),     # Unfair_word_count
+    re.compile(r"fair\w*", re.IGNORECASE),       # Fair_word_count
+    re.compile(r"unjust\w*", re.IGNORECASE),     # Unjust_word_count
+]
+
+
+def _count_matches(
+    section_ids: list[str], graph: nx.MultiDiGraph, pattern: re.Pattern
+) -> int:
+    return sum(len(pattern.findall(graph.nodes[sid]["text"])) for sid in section_ids)
+
+
+def _conditional_statement_count(graph: nx.MultiDiGraph, section_ids: list[str]) -> int:
+    return _count_matches(section_ids, graph, _CONDITIONAL_STATEMENT_PATTERN)
+
+
+def _indeterminate_concept_count(graph: nx.MultiDiGraph, section_ids: list[str]) -> int:
+    return sum(_count_matches(section_ids, graph, p) for p in _INDETERMINATE_CONCEPT_PATTERNS)
