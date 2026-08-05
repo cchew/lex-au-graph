@@ -229,3 +229,23 @@ def test_act_complexity_holds_all_four_metrics():
     )
     assert c.act_frbr_uri == "/akn/au/act/1988/119"
     assert c.word_count == 2000
+
+
+def test_provision_codifiability_holds_all_signals_with_llm_signals_none():
+    from lexaugraph.models import ProvisionCodifiability
+    p = ProvisionCodifiability(
+        eid="part-I__sec-6",
+        act_frbr_uri="/akn/au/act/1988/119",
+        llm_tag=None,
+        llm_reasoning=None,
+        vagueness_tag=None,
+        vagueness_reasoning=None,
+        prescriptive_density_count=3,
+        prescriptive_density_regdata_subset_count=2,
+        prescriptive_density_tag="medium",
+        agreement="not_computed",
+        parse_verification_status="not_yet_checked",
+    )
+    assert p.eid == "part-I__sec-6"
+    assert p.llm_tag is None
+    assert p.agreement == "not_computed"

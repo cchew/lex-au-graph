@@ -139,3 +139,23 @@ class ActComplexity:
     conditional_statement_count: int
     conditional_statement_density: float
     word_count: int
+
+
+@dataclass
+class ProvisionCodifiability:
+    eid: str
+    act_frbr_uri: str
+    # Signal 1 -- LLM holistic judgment. None until --llm-signals has run.
+    llm_tag: Optional[Literal["low", "medium", "high"]]
+    llm_reasoning: Optional[str]
+    # Signal 2 -- vagueness/open-texture. None until --llm-signals has run.
+    vagueness_tag: Optional[Literal["low", "medium", "high"]]
+    vagueness_reasoning: Optional[str]
+    # Signal 3 -- prescriptive-language density. Always computed, free.
+    prescriptive_density_count: int
+    prescriptive_density_regdata_subset_count: int
+    prescriptive_density_tag: Literal["low", "medium", "high"]
+    # Corroboration
+    agreement: Literal["full", "partial", "none", "not_computed"]
+    # Parse-verification (Act-level fact, denormalized per provision)
+    parse_verification_status: Literal["spot_checked", "not_yet_checked"]
