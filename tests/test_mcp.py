@@ -184,3 +184,41 @@ def test_find_entity_tool_resolver_none_returns_error():
     mcp_module._resolver = None
     result = mcp_module.find_entity_tool("Registrar")
     assert "not initialised" in result.lower()
+
+
+@pytest.fixture(autouse=True)
+def reset_complexity():
+    yield
+    mcp_module._complexity = None
+
+
+def test_complexity_metrics_tool_not_initialised():
+    mcp_module._complexity = None
+    result = mcp_module.complexity_metrics_tool("/akn/au/act/1988/119")
+    assert "not available" in result
+
+
+def test_complexity_metrics_tool_unknown_act():
+    mcp_module._complexity = {}
+    result = mcp_module.complexity_metrics_tool("/akn/au/act/9999/1")
+    assert "No complexity metrics found" in result
+
+
+def test_complexity_metrics_tool_found():
+    mcp_module._complexity = {
+        "/akn/au/act/1988/119": {
+            "title": "Privacy Act 1988",
+            "pagerank_centrality": 0.005,
+            "raw_citation_count": 3,
+            "defined_term_count": 2,
+            "defined_term_density": 0.01,
+            "indeterminate_concept_count": 1,
+            "indeterminate_concept_density": 0.005,
+            "conditional_statement_count": 4,
+            "conditional_statement_density": 0.02,
+            "word_count": 200,
+        }
+    }
+    result = mcp_module.complexity_metrics_tool("/akn/au/act/1988/119")
+    assert "Privacy Act 1988" in result
+    assert "3" in result  # raw_citation_count

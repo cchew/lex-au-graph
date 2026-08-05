@@ -10,14 +10,22 @@ from .resolver import DefinitionResolver
 
 mcp = FastMCP("lex-au-graph")
 _resolver: Optional[DefinitionResolver] = None
+_complexity: Optional[dict[str, dict]] = None
 
 
 def init(graph_path: Path) -> None:
-    global _resolver
+    global _resolver, _complexity
     graph = LexAuGraph.load(graph_path)
     centrality_path = graph_path.parent / "centrality.json"
     centrality = json.loads(centrality_path.read_text()) if centrality_path.exists() else None
     _resolver = DefinitionResolver(graph, centrality=centrality)
+
+    complexity_path = graph_path.parent / "complexity.json"
+    if complexity_path.exists():
+        records = json.loads(complexity_path.read_text())
+        _complexity = {r["act_frbr_uri"]: r for r in records}
+    else:
+        _complexity = None
 
 
 def resolve_definition_tool(term: str, act_frbr_uri: str) -> str:
@@ -196,3 +204,36 @@ def find_entity(display_term: str) -> str:
         display_term: Exact display text to search for (e.g. "Commissioner")
     """
     return find_entity_tool(display_term)
+
+
+def complexity_metrics_tool(act_frbr_uri: str) -> str:
+    if _complexity is None:
+        return "Error: complexity metrics not available. Run `lexaugraph complexity` first."
+    record = _complexity.get(act_frbr_uri)
+    if record is None:
+        return f"No complexity metrics found for {act_frbr_uri}."
+    return (
+        f"**{record['title']}** ({act_frbr_uri})\n\n"
+        f"- Cross-reference: PageRank centrality {record['pagerank_centrality']:.6f}, "
+        f"raw citation count {record['raw_citation_count']}\n"
+        f"- Defined-term density: {record['defined_term_count']} terms "
+        f"({record['defined_term_density']:.4f} per word)\n"
+        f"- Indeterminate-concept frequency: {record['indeterminate_concept_count']} matches "
+        f"({record['indeterminate_concept_density']:.4f} per word)\n"
+        f"- Conditional-statement frequency: {record['conditional_statement_count']} matches "
+        f"({record['conditional_statement_density']:.4f} per word)\n"
+        f"- Word count: {record['word_count']}"
+    )
+
+
+@mcp.tool()
+def complexity_metrics(act_frbr_uri: str) -> str:
+    """Report structural complexity metrics for an AU Act -- cross-reference
+    centrality, defined-term density, indeterminate-concept frequency,
+    conditional-statement frequency -- mirroring (a live, graph-based
+    extension of) the ALRC DataHub's approach.
+
+    Args:
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+    """
+    return complexity_metrics_tool(act_frbr_uri)
