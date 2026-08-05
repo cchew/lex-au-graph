@@ -87,3 +87,35 @@ def _conditional_statement_count(graph: nx.MultiDiGraph, section_ids: list[str])
 
 def _indeterminate_concept_count(graph: nx.MultiDiGraph, section_ids: list[str]) -> int:
     return sum(_count_matches(section_ids, graph, p) for p in _INDETERMINATE_CONCEPT_PATTERNS)
+
+
+def compute_complexity(
+    graph: nx.MultiDiGraph, centrality: dict[str, float]
+) -> list[ActComplexity]:
+    results: list[ActComplexity] = []
+    for node_id, data in graph.nodes(data=True):
+        if data.get("type") != "act":
+            continue
+        act_frbr_uri = node_id
+        section_ids = _section_ids(graph, act_frbr_uri)
+        node_set = {act_frbr_uri, *section_ids}
+
+        word_count = _word_count(graph, section_ids)
+        defined_term_count = _defined_term_count(graph, act_frbr_uri)
+        indeterminate_count = _indeterminate_concept_count(graph, section_ids)
+        conditional_count = _conditional_statement_count(graph, section_ids)
+
+        results.append(ActComplexity(
+            act_frbr_uri=act_frbr_uri,
+            title=data.get("title", act_frbr_uri),
+            pagerank_centrality=_pagerank_centrality(centrality, [act_frbr_uri, *section_ids]),
+            raw_citation_count=_raw_citation_count(graph, node_set),
+            defined_term_count=defined_term_count,
+            defined_term_density=defined_term_count / word_count if word_count else 0.0,
+            indeterminate_concept_count=indeterminate_count,
+            indeterminate_concept_density=indeterminate_count / word_count if word_count else 0.0,
+            conditional_statement_count=conditional_count,
+            conditional_statement_density=conditional_count / word_count if word_count else 0.0,
+            word_count=word_count,
+        ))
+    return results

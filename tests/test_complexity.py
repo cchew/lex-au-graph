@@ -172,3 +172,53 @@ def test_indeterminate_concept_count_zero_when_no_matches():
         act_frbr_uri="/akn/au/act/2000/1", text="The Secretary is appointed.",
     )
     assert _indeterminate_concept_count(g, ["/akn/au/act/2000/1#sec-1"]) == 0
+
+
+from lexaugraph.complexity import compute_complexity  # noqa: E402
+
+
+def test_compute_complexity_returns_one_record_per_act():
+    g = nx.MultiDiGraph()
+    g.add_node("/akn/au/act/2000/1", type="act", title="Test Act 2000")
+    g.add_node(
+        "/akn/au/act/2000/1#sec-1", type="section",
+        act_frbr_uri="/akn/au/act/2000/1",
+        text="If a person applies unless excluded, the Minister must act reasonably.",
+    )
+    g.add_edge("/akn/au/act/2000/1", "/akn/au/act/2000/1#sec-1", key="contains", type="contains")
+    g.add_node(
+        "/akn/au/act/2000/1#term-x", type="defined_term",
+        act_frbr_uri="/akn/au/act/2000/1",
+    )
+
+    results = compute_complexity(g, centrality={})
+
+    assert len(results) == 1
+    r = results[0]
+    assert r.act_frbr_uri == "/akn/au/act/2000/1"
+    assert r.title == "Test Act 2000"
+    assert r.word_count == 11
+    assert r.defined_term_count == 1
+    assert r.defined_term_density == pytest.approx(1 / 11)
+    assert r.conditional_statement_count == 2  # "If", "unless"
+    assert r.indeterminate_concept_count == 1  # "reasonably"
+    assert r.pagerank_centrality == 0.0
+    assert r.raw_citation_count == 0
+
+
+def test_compute_complexity_ignores_non_act_nodes():
+    g = nx.MultiDiGraph()
+    g.add_node("/akn/au/act/2000/1#sec-1", type="section", act_frbr_uri="/akn/au/act/2000/1", text="")
+    g.add_node("/akn/au/act/2000/1#term-x", type="defined_term", act_frbr_uri="/akn/au/act/2000/1")
+    assert compute_complexity(g, centrality={}) == []
+
+
+def test_compute_complexity_zero_words_gives_zero_densities_not_division_error():
+    g = nx.MultiDiGraph()
+    g.add_node("/akn/au/act/2000/1", type="act", title="Empty Act 2000")
+    results = compute_complexity(g, centrality={})
+    assert len(results) == 1
+    assert results[0].word_count == 0
+    assert results[0].defined_term_density == 0.0
+    assert results[0].indeterminate_concept_density == 0.0
+    assert results[0].conditional_statement_density == 0.0
