@@ -5,7 +5,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 > [!NOTE]
 > [search.gov.au](https://search.gov.au)'s Align stream ("Common Ground", Department of Finance, alpha — see [Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026) tackles the same problem at whole-of-government scale: surfacing linkage and divergence across Acts and agencies.
 
-**Status: v0.11.0**
+**Status: v0.12.0**
 
 ## Uses / used by
 
@@ -22,7 +22,7 @@ Builds a directed graph over the lex-au AKN corpus:
 - **Nodes:** Act, Section, DefinedTerm
 - **Edges:** `contains` (Act→Section), `ref` (Section→Section/Act — each carries one or more classified citations: `amends`/`repeals`/`cites`/`references_definition`, with a relation-confidence and an extraction-confidence score per citation), `defines` (Section→DefinedTerm), `mentions` (Section→DefinedTerm, for DefinedTerms classified as an entity — office/agency — with a `count` of matched occurrences in that section's text)
 
-Exposes seven MCP tools:
+Exposes ten MCP tools:
 
 - `resolve_definition(term, act_frbr_uri)` - canonical definition text and section citation for a defined term within an Act
 - `cross_references(eid, act_frbr_uri)` - all outgoing cross-references from a section
@@ -31,6 +31,9 @@ Exposes seven MCP tools:
 - `impact_analysis(eid, act_frbr_uri, max_hops)` - everything that transitively cites a section (reverse-reachability fan-in)
 - `entities(eid, act_frbr_uri)` - entities (offices/agencies) mentioned in a section
 - `find_entity(display_term)` - Act-scoped entity homonym search across all loaded Acts
+- `complexity_metrics(act_frbr_uri)` - Act-level structural complexity rollup (citation centrality, defined-term density, indeterminate-concept and conditional-statement frequency)
+- `codifiability_signals(eid, act_frbr_uri)` - per-provision Rules-as-Code readiness signals (LLM codifiability tag, LLM vagueness tag, prescriptive-density count, agreement label)
+- `codifiability_act_summary(act_frbr_uri)` - Act-level rollup of scored provisions' codifiability buckets
 
 ## Motivation
 
@@ -77,6 +80,14 @@ lexaugraph entities --eid "part-I__sec-6" --act "/akn/au/act/1988/119"
 # Find all Act-scoped entities matching a display term
 lexaugraph find-entity --term "Commissioner"
 
+# Precompute Act-level structural complexity metrics, writes complexity.json
+lexaugraph complexity
+
+# Precompute per-provision codifiability signals, writes codifiability.json
+# --llm-signals is opt-in (real Anthropic Batch API cost); the default path
+# only computes the free regex-based prescriptive-density signal
+lexaugraph codifiability [--llm-signals]
+
 # Backfill untagged prose definitions for one Act via grounded LLM extraction
 lexaugraph extract-untagged --xml /path/to/act.xml --act-frbr-uri "/akn/au/act/1988/119"
 
@@ -90,10 +101,11 @@ lexaugraph serve
 lexaugraph serve --graph graph.json
 ```
 
-Registers seven tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
+Registers ten tools on a FastMCP server. Connect via any MCP client (Claude Desktop, Claude Code, etc.).
 
 ## Versions
 
+- v0.12.0 (2026-08-06): three feature drops bundled into one release. **Entity/office nodes** - `entity_type` classification on defined terms (closed 11-keyword lexicon) and a `mentions` edge type (Section→DefinedTerm) linking sections to the entities they reference; new `entities`/`find-entity` CLI commands and MCP tools. **Structural legislative complexity** - Act-level metrics mirroring ALRC DataHub's methodology (citation centrality, defined-term density, indeterminate-concept and conditional-statement frequency); new `complexity` CLI command and `complexity_metrics` MCP tool. **Codifiability scoring** - three per-provision Rules-as-Code readiness signals (LLM codifiability tag, LLM vagueness tag, free regex prescriptive-density count) plus a derived agreement label; new `codifiability [--llm-signals]` CLI command and `codifiability_signals`/`codifiability_act_summary` MCP tools, backed by new Anthropic Batch API infrastructure. 334 tests.
 - v0.11.0 (2026-08-02): section-scoped `resolve_definition` (optional `section_eid` param), resolving in-Act term collisions by exact section, then nearest enclosing Part/Division, else unresolved rather than guessed. 228 tests.
 - **v0.10.0** - `ActNode.title_id` and `legislation_url` - Act nodes now carry legislation.gov.au's opaque register ID (already present in lex-au's `index.json`, previously dropped by the graph loader) and a ready-to-use deep link (`https://www.legislation.gov.au/{title_id}/latest/text`). Act-level only - legislation.gov.au has no stable per-section anchor scheme (confirmed live: rendered text lives in a client-side EPUB blob with unstable, auto-generated Word bookmark ids, not semantic `#eId`-style anchors).
 - **v0.9.0** - Legislative impact analysis: `impacted_by()` reverse-reachability fan-in ("what's affected if this section changes") and `compute_centrality()` PageRank triage over the ref subgraph. New `centrality`/`impact` CLI commands and `impact_analysis` MCP tool.
