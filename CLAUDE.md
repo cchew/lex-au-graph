@@ -19,6 +19,7 @@ lexaugraph build --corpus-dir ../../lex-au/repo/corpus/
 lexaugraph stats [--graph graph.json]
 lexaugraph resolve --term TERM --act FRBR_URI [--graph graph.json]
 lexaugraph centrality [--graph graph.json] [--output centrality.json]
+lexaugraph complexity [--graph graph.json] [--output complexity.json]
 lexaugraph impact --eid EID --act FRBR_URI [--max-hops 3] [--graph graph.json]
 lexaugraph serve [--graph graph.json]
 
