@@ -93,6 +93,27 @@ def centrality(
 
 
 @app.command()
+def complexity(
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+    output: Path = typer.Option(None, "--output", "-o", help="Output path for complexity.json (default: alongside graph.json)"),
+) -> None:
+    """Precompute structural complexity metrics per Act and write complexity.json."""
+    import dataclasses
+    from .graph import LexAuGraph
+    from .complexity import compute_complexity
+    g = LexAuGraph.load(graph)
+    centrality_path = graph.parent / "centrality.json"
+    if not centrality_path.exists():
+        typer.echo(f"Error: {centrality_path} not found. Run 'lexaugraph centrality' first.", err=True)
+        raise typer.Exit(1)
+    centrality_scores = json.loads(centrality_path.read_text())
+    results = compute_complexity(g.graph, centrality_scores)
+    out_path = output if output is not None else graph.parent / "complexity.json"
+    out_path.write_text(json.dumps([dataclasses.asdict(r) for r in results], indent=2))
+    typer.echo(f"Complexity metrics for {len(results)} Acts written to {out_path}")
+
+
+@app.command()
 def resolve(
     term: str = typer.Option(..., "--term", "-t", help="Defined term to resolve"),
     act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),

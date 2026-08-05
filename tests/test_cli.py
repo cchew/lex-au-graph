@@ -203,3 +203,32 @@ def test_find_entity_no_match_exits_nonzero(tmp_path: Path):
     ])
 
     assert result.exit_code == 1
+
+
+def test_complexity_writes_complexity_json(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+    runner.invoke(app, ["centrality", "--graph", str(graph_path)])
+
+    result = runner.invoke(app, ["complexity", "--graph", str(graph_path)])
+
+    assert result.exit_code == 0, result.output
+    complexity_path = tmp_path / "complexity.json"
+    assert complexity_path.exists()
+    records = json.loads(complexity_path.read_text())
+    assert len(records) == 2  # privacy-act-1988 + freedom-of-information-act-1982 fixtures
+    by_uri = {r["act_frbr_uri"]: r for r in records}
+    assert "/akn/au/act/1988/119" in by_uri
+    assert by_uri["/akn/au/act/1988/119"]["word_count"] > 0
+
+
+def test_complexity_errors_without_centrality_json(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, ["complexity", "--graph", str(graph_path)])
+
+    assert result.exit_code == 1
+    assert "centrality" in result.output.lower()
