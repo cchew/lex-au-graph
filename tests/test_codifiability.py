@@ -104,3 +104,122 @@ from lexaugraph.codifiability import build_signal2_prompt  # noqa: E402
 def test_build_signal2_prompt_includes_section_text():
     prompt = build_signal2_prompt("Reasonable steps must be taken in the circumstances.")
     assert "Reasonable steps must be taken in the circumstances." in prompt
+
+
+from lexaugraph.codifiability import (  # noqa: E402
+    _custom_id,
+    build_batch_requests,
+    submit_batch,
+    wait_for_batch,
+    fetch_batch_results,
+)
+
+
+def test_custom_id_stays_under_64_chars_for_a_long_node_id():
+    long_node_id = "/akn/au/act/1988/119#" + "part-II__dvs-1__sec-" * 3 + "6AA"
+    assert len(long_node_id) > 64  # sanity: the raw id itself would already violate the cap
+    cid = _custom_id("signal1", long_node_id)
+    assert len(cid) <= 64
+
+
+def test_custom_id_is_deterministic():
+    assert _custom_id("signal1", "x") == _custom_id("signal1", "x")
+
+
+def test_custom_id_differs_by_signal_for_the_same_node():
+    assert _custom_id("signal1", "x") != _custom_id("signal2", "x")
+
+
+def test_build_batch_requests_returns_requests_and_id_map():
+    items = [("/akn/au/act/2000/1#sec-1", "Some provision text.")]
+    requests, id_map = build_batch_requests("signal1", items, "SYSTEM", lambda t: f"PROMPT: {t}")
+    assert len(requests) == 1
+    req = requests[0]
+    assert req["params"]["system"] == "SYSTEM"
+    assert req["params"]["messages"] == [{"role": "user", "content": "PROMPT: Some provision text."}]
+    assert id_map[req["custom_id"]] == "/akn/au/act/2000/1#sec-1"
+
+
+def test_submit_batch_returns_batch_id():
+    class _FakeBatch:
+        id = "batch-abc"
+    class _FakeBatches:
+        def create(self, requests):
+            return _FakeBatch()
+    class _FakeMessages:
+        batches = _FakeBatches()
+    class _FakeClient:
+        messages = _FakeMessages()
+
+    batch_id = submit_batch([{"custom_id": "x", "params": {}}], _FakeClient())
+    assert batch_id == "batch-abc"
+
+
+def test_wait_for_batch_polls_until_ended(monkeypatch):
+    class _FakeBatchStatus:
+        def __init__(self, status):
+            self.processing_status = status
+    statuses = iter(["in_progress", "in_progress", "ended"])
+    class _FakeBatches:
+        def retrieve(self, batch_id):
+            return _FakeBatchStatus(next(statuses))
+    class _FakeMessages:
+        batches = _FakeBatches()
+    class _FakeClient:
+        messages = _FakeMessages()
+
+    sleeps = []
+    monkeypatch.setattr("lexaugraph.codifiability.time.sleep", lambda s: sleeps.append(s))
+
+    wait_for_batch("batch-1", _FakeClient(), poll_interval=1)
+
+    assert sleeps == [1, 1]  # slept before the 2nd and 3rd checks, not after "ended"
+
+
+def test_fetch_batch_results_maps_custom_id_back_to_node_id_via_id_map():
+    class _TextBlock:
+        type = "text"
+        text = '{"tag": "high", "reasoning": "clear numeric threshold"}'
+    class _Message:
+        content = [_TextBlock()]
+    class _SucceededResult:
+        type = "succeeded"
+        message = _Message()
+    class _Entry:
+        def __init__(self, custom_id, result):
+            self.custom_id = custom_id
+            self.result = result
+    class _FakeBatches:
+        def results(self, batch_id):
+            return [_Entry("hashed-id-1", _SucceededResult())]
+    class _FakeMessages:
+        batches = _FakeBatches()
+    class _FakeClient:
+        messages = _FakeMessages()
+
+    id_map = {"hashed-id-1": "/akn/au/act/2000/1#sec-1"}
+    results = fetch_batch_results("batch-1", _FakeClient(), id_map)
+
+    assert results == {
+        "/akn/au/act/2000/1#sec-1": {"tag": "high", "reasoning": "clear numeric threshold"}
+    }
+
+
+def test_fetch_batch_results_maps_failed_entry_to_none():
+    class _ErroredResult:
+        type = "errored"
+    class _Entry:
+        custom_id = "hashed-id-1"
+        result = _ErroredResult()
+    class _FakeBatches:
+        def results(self, batch_id):
+            return [_Entry()]
+    class _FakeMessages:
+        batches = _FakeBatches()
+    class _FakeClient:
+        messages = _FakeMessages()
+
+    id_map = {"hashed-id-1": "/akn/au/act/2000/1#sec-1"}
+    results = fetch_batch_results("batch-1", _FakeClient(), id_map)
+
+    assert results == {"/akn/au/act/2000/1#sec-1": None}
