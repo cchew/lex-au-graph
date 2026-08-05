@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import re
 from typing import Literal
 
@@ -38,3 +39,48 @@ def _parse_verification_status(
     act_frbr_uri: str, verification_data: dict[str, str]
 ) -> Literal["spot_checked", "not_yet_checked"]:
     return verification_data.get(act_frbr_uri, "not_yet_checked")
+
+
+_SIGNAL1_SYSTEM_PROMPT = (
+    "You assess whether a provision of Australian Commonwealth legislation can be "
+    "expressed as a deterministic, machine-codifiable rule (Rules-as-Code readiness). "
+    "Classify the provision's codifiability as exactly one of: high, medium, low.\n\n"
+    "- high: the provision reduces to a deterministic rule over objectively-verifiable "
+    "facts (dates, numeric thresholds, enumerated categories) with no judgment call.\n"
+    "- medium: mostly deterministic but hinges on one bounded, well-defined "
+    "discretionary element (e.g. a Minister's approval of a specific enumerated list "
+    "of grounds).\n"
+    "- low: hinges on an open-ended standard (reasonableness, good faith, "
+    "proportionality, \"in the circumstances\") that cannot be reduced to a fixed rule set.\n\n"
+    "Return ONLY valid JSON -- no markdown fences, no commentary. Schema: "
+    '{"tag": "high"|"medium"|"low", "reasoning": "one sentence"}'
+)
+
+
+def build_signal1_prompt(section_text: str) -> str:
+    return f"## Provision text\n{section_text}\n\n## Task\nClassify this provision's codifiability."
+
+
+def parse_signal_response(raw_text: str) -> dict | None:
+    """Strip markdown fences, parse JSON, validate {tag, reasoning} shape.
+
+    Shared by signal 1 (codifiability tag) and signal 2 (vagueness tag) -- both
+    prompts use the identical {tag, reasoning} output schema. Returns None for any
+    malformed response (bad JSON, wrong shape, invalid tag value) rather than
+    raising, so one bad response in a large batch doesn't crash the whole run --
+    the caller treats None the same as "not yet scored".
+    """
+    text = raw_text.strip()
+    text = re.sub(r"^```json\n?", "", text)
+    text = re.sub(r"\n?```$", "", text).strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    tag = data.get("tag")
+    reasoning = data.get("reasoning")
+    if tag not in ("high", "medium", "low") or not isinstance(reasoning, str):
+        return None
+    return {"tag": tag, "reasoning": reasoning}

@@ -59,3 +59,40 @@ def test_parse_verification_status_returns_recorded_value():
 def test_parse_verification_status_unrecorded_act_defaults_even_with_other_data_present():
     data = {"/akn/au/act/1988/119": "spot_checked"}
     assert _parse_verification_status("/akn/au/act/1999/9", data) == "not_yet_checked"
+
+
+from lexaugraph.codifiability import (  # noqa: E402
+    build_signal1_prompt,
+    parse_signal_response,
+)
+
+
+def test_build_signal1_prompt_includes_section_text():
+    prompt = build_signal1_prompt("A person who is 18 years or older may apply.")
+    assert "A person who is 18 years or older may apply." in prompt
+
+
+def test_parse_signal_response_strips_markdown_fences_and_parses_json():
+    raw = '```json\n{"tag": "high", "reasoning": "clear numeric threshold"}\n```'
+    result = parse_signal_response(raw)
+    assert result == {"tag": "high", "reasoning": "clear numeric threshold"}
+
+
+def test_parse_signal_response_parses_plain_json_without_fences():
+    raw = '{"tag": "low", "reasoning": "hinges on reasonableness"}'
+    result = parse_signal_response(raw)
+    assert result == {"tag": "low", "reasoning": "hinges on reasonableness"}
+
+
+def test_parse_signal_response_returns_none_for_invalid_json():
+    assert parse_signal_response("not json at all") is None
+
+
+def test_parse_signal_response_returns_none_for_invalid_tag_value():
+    raw = '{"tag": "very-high", "reasoning": "..."}'
+    assert parse_signal_response(raw) is None
+
+
+def test_parse_signal_response_returns_none_when_reasoning_missing():
+    raw = '{"tag": "high"}'
+    assert parse_signal_response(raw) is None
