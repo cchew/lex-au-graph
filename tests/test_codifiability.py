@@ -260,3 +260,70 @@ def test_compute_agreement_none_when_all_three_differ():
 def test_compute_agreement_vagueness_medium_inverts_to_medium():
     # confirms the medium->medium inversion edge case explicitly
     assert compute_agreement("medium", "medium", "low") == "partial"  # [medium, medium, low]
+
+
+from lexaugraph.codifiability import compute_codifiability  # noqa: E402
+
+
+def _section_graph(text: str) -> nx.MultiDiGraph:
+    g = nx.MultiDiGraph()
+    g.add_node("/akn/au/act/2000/1", type="act", title="Test Act 2000")
+    g.add_node(
+        "/akn/au/act/2000/1#sec-1", type="section",
+        act_frbr_uri="/akn/au/act/2000/1", eid="sec-1", text=text,
+    )
+    g.add_edge("/akn/au/act/2000/1", "/akn/au/act/2000/1#sec-1", key="contains", type="contains")
+    return g
+
+
+def test_compute_codifiability_signal_3_only_leaves_llm_fields_none():
+    g = _section_graph("A person must provide evidence.")
+
+    results = compute_codifiability(g, parse_verification_data={}, llm_results=None)
+
+    assert len(results) == 1
+    r = results[0]
+    assert r.eid == "sec-1"
+    assert r.act_frbr_uri == "/akn/au/act/2000/1"
+    assert r.llm_tag is None
+    assert r.vagueness_tag is None
+    assert r.agreement == "not_computed"
+    assert r.prescriptive_density_count == 1  # "must"
+    assert r.parse_verification_status == "not_yet_checked"
+
+
+def test_compute_codifiability_with_llm_results_populates_all_signals():
+    g = _section_graph("A person must provide evidence.")
+    llm_results = {
+        "/akn/au/act/2000/1#sec-1": {
+            "signal1": {"tag": "high", "reasoning": "clear obligation"},
+            "signal2": {"tag": "low", "reasoning": "no vague terms"},
+        }
+    }
+
+    results = compute_codifiability(g, parse_verification_data={}, llm_results=llm_results)
+
+    r = results[0]
+    assert r.llm_tag == "high"
+    assert r.llm_reasoning == "clear obligation"
+    assert r.vagueness_tag == "low"
+    assert r.vagueness_reasoning == "no vague terms"
+    # "A person must provide evidence." has exactly one 7-word-pattern match ("must"),
+    # so prescriptive_density_tag is "low" (count=1, per Task 2's bucketing).
+    # Normalized: [llm_tag=high, vagueness_tag low->inverted-high, density=low] --
+    # two match (high), one differs (low) -- "partial", not "full".
+    assert r.agreement == "partial"
+
+
+def test_compute_codifiability_ignores_non_section_nodes():
+    g = _section_graph("A person must provide evidence.")
+    g.add_node("/akn/au/act/2000/1#term-x", type="defined_term", act_frbr_uri="/akn/au/act/2000/1")
+    results = compute_codifiability(g, parse_verification_data={}, llm_results=None)
+    assert len(results) == 1  # the defined_term node is not scored
+
+
+def test_compute_codifiability_uses_parse_verification_data():
+    g = _section_graph("A person must provide evidence.")
+    verification = {"/akn/au/act/2000/1": "spot_checked"}
+    results = compute_codifiability(g, parse_verification_data=verification, llm_results=None)
+    assert results[0].parse_verification_status == "spot_checked"

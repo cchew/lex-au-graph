@@ -5,6 +5,10 @@ import re
 import time
 from typing import Literal
 
+import networkx as nx
+
+from .models import ProvisionCodifiability
+
 
 # ALRC's Obligations_word_count list, per their Explanatory Note
 # (alrc.gov.au/wp-content/uploads/2022/12/Explanatory-Note-Complexity-and-
@@ -203,3 +207,48 @@ def compute_agreement(
     if len(distinct) == 2:
         return "partial"
     return "none"
+
+
+def compute_codifiability(
+    graph: "nx.MultiDiGraph",
+    parse_verification_data: dict[str, str],
+    llm_results: dict[str, dict] | None = None,
+) -> list[ProvisionCodifiability]:
+    results: list[ProvisionCodifiability] = []
+    for node_id, data in graph.nodes(data=True):
+        if data.get("type") != "section":
+            continue
+        act_frbr_uri = data["act_frbr_uri"]
+        eid = data["eid"]
+        text = data["text"]
+
+        density_7 = len(_PRESCRIPTIVE_DENSITY_PATTERN_7.findall(text))
+        density_5 = len(_PRESCRIPTIVE_DENSITY_PATTERN_5.findall(text))
+        density_tag = _prescriptive_density_tag(density_7)
+
+        llm_tag = llm_reasoning = vagueness_tag = vagueness_reasoning = None
+        if llm_results is not None:
+            entry = llm_results.get(node_id, {})
+            signal1 = entry.get("signal1")
+            signal2 = entry.get("signal2")
+            if signal1:
+                llm_tag = signal1["tag"]
+                llm_reasoning = signal1["reasoning"]
+            if signal2:
+                vagueness_tag = signal2["tag"]
+                vagueness_reasoning = signal2["reasoning"]
+
+        results.append(ProvisionCodifiability(
+            eid=eid,
+            act_frbr_uri=act_frbr_uri,
+            llm_tag=llm_tag,
+            llm_reasoning=llm_reasoning,
+            vagueness_tag=vagueness_tag,
+            vagueness_reasoning=vagueness_reasoning,
+            prescriptive_density_count=density_7,
+            prescriptive_density_regdata_subset_count=density_5,
+            prescriptive_density_tag=density_tag,
+            agreement=compute_agreement(llm_tag, vagueness_tag, density_tag),
+            parse_verification_status=_parse_verification_status(act_frbr_uri, parse_verification_data),
+        ))
+    return results
