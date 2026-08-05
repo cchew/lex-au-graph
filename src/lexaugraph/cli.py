@@ -114,6 +114,62 @@ def complexity(
 
 
 @app.command()
+def codifiability(
+    graph: Path = typer.Option(DEFAULT_GRAPH, "--graph", "-g", help="Path to graph.json"),
+    output: Path = typer.Option(None, "--output", "-o", help="Output path for codifiability.json (default: alongside graph.json)"),
+    llm_signals: bool = typer.Option(
+        False, "--llm-signals",
+        help="Compute LLM-based signals 1+2 (codifiability tag, vagueness tag) via the "
+             "Anthropic Batch API. Costs real Anthropic API calls -- off by default.",
+    ),
+) -> None:
+    """Precompute per-provision codifiability signals and write codifiability.json."""
+    import dataclasses
+    from .graph import LexAuGraph
+    from .codifiability import (
+        compute_codifiability, build_batch_requests, submit_batch, wait_for_batch,
+        fetch_batch_results, _SIGNAL1_SYSTEM_PROMPT, _SIGNAL2_SYSTEM_PROMPT,
+        build_signal1_prompt, build_signal2_prompt,
+    )
+    g = LexAuGraph.load(graph)
+
+    verification_path = Path("parse_verification.json")
+    verification_data = (
+        json.loads(verification_path.read_text()) if verification_path.exists() else {}
+    )
+
+    llm_results = None
+    if llm_signals:
+        import anthropic
+        client = anthropic.Anthropic()
+        sections = [
+            (node_id, data["text"]) for node_id, data in g.graph.nodes(data=True)
+            if data.get("type") == "section"
+        ]
+        typer.echo(f"Scoring {len(sections)} sections via signal 1+2 -- real Anthropic API cost.")
+
+        req1, map1 = build_batch_requests("signal1", sections, _SIGNAL1_SYSTEM_PROMPT, build_signal1_prompt)
+        req2, map2 = build_batch_requests("signal2", sections, _SIGNAL2_SYSTEM_PROMPT, build_signal2_prompt)
+        batch1_id = submit_batch(req1, client)
+        batch2_id = submit_batch(req2, client)
+        typer.echo(f"Batches submitted ({batch1_id}, {batch2_id}) -- polling until complete...")
+        wait_for_batch(batch1_id, client)
+        wait_for_batch(batch2_id, client)
+        results1 = fetch_batch_results(batch1_id, client, map1)
+        results2 = fetch_batch_results(batch2_id, client, map2)
+
+        llm_results = {
+            node_id: {"signal1": results1.get(node_id), "signal2": results2.get(node_id)}
+            for node_id, _ in sections
+        }
+
+    results = compute_codifiability(g.graph, verification_data, llm_results)
+    out_path = output if output is not None else graph.parent / "codifiability.json"
+    out_path.write_text(json.dumps([dataclasses.asdict(r) for r in results], indent=2))
+    typer.echo(f"Codifiability signals for {len(results)} sections written to {out_path}")
+
+
+@app.command()
 def resolve(
     term: str = typer.Option(..., "--term", "-t", help="Defined term to resolve"),
     act: str = typer.Option(..., "--act", "-a", help="Act FRBR URI (e.g. /akn/au/act/1988/119)"),

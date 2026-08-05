@@ -232,3 +232,77 @@ def test_complexity_errors_without_centrality_json(tmp_path: Path):
 
     assert result.exit_code == 1
     assert "centrality" in result.output.lower()
+
+
+def test_codifiability_without_llm_signals_writes_signal_3_only(tmp_path: Path):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    result = runner.invoke(app, ["codifiability", "--graph", str(graph_path)])
+
+    assert result.exit_code == 0, result.output
+    codifiability_path = tmp_path / "codifiability.json"
+    assert codifiability_path.exists()
+    records = json.loads(codifiability_path.read_text())
+    assert len(records) > 0
+    assert all(r["llm_tag"] is None for r in records)
+    assert all(r["agreement"] == "not_computed" for r in records)
+
+
+def test_codifiability_llm_signals_flag_constructs_client_and_submits_batches(tmp_path: Path, monkeypatch):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    constructed = []
+    submitted_batches = []
+
+    class _FakeBatch:
+        id = "batch-fake"
+        processing_status = "ended"
+
+    class _FakeBatches:
+        def create(self, requests):
+            submitted_batches.append(requests)
+            return _FakeBatch()
+        def retrieve(self, batch_id):
+            return _FakeBatch()
+        def results(self, batch_id):
+            return []  # no results needed to prove the flag path is exercised
+
+    class _FakeMessages:
+        batches = _FakeBatches()
+
+    class _FakeClient:
+        def __init__(self):
+            constructed.append(True)
+        messages = _FakeMessages()
+
+    monkeypatch.setattr("anthropic.Anthropic", _FakeClient)
+
+    result = runner.invoke(app, [
+        "codifiability", "--graph", str(graph_path), "--llm-signals",
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert constructed == [True]
+    assert len(submitted_batches) == 2  # signal 1 batch + signal 2 batch
+    assert "real Anthropic API cost" in result.output
+
+
+def test_codifiability_without_llm_signals_flag_does_not_construct_client(tmp_path: Path, monkeypatch):
+    corpus_dir = _make_corpus(tmp_path)
+    graph_path = tmp_path / "graph.json"
+    runner.invoke(app, ["build", "--corpus-dir", str(corpus_dir), "--output", str(graph_path)])
+
+    constructed = []
+    class _FakeClient:
+        def __init__(self):
+            constructed.append(True)
+    monkeypatch.setattr("anthropic.Anthropic", _FakeClient)
+
+    result = runner.invoke(app, ["codifiability", "--graph", str(graph_path)])
+
+    assert result.exit_code == 0, result.output
+    assert constructed == []
