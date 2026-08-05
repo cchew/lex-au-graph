@@ -84,3 +84,22 @@ def parse_signal_response(raw_text: str) -> dict | None:
     if tag not in ("high", "medium", "low") or not isinstance(reasoning, str):
         return None
     return {"tag": tag, "reasoning": reasoning}
+
+
+_SIGNAL2_SYSTEM_PROMPT = (
+    "You assess how open-textured (vague) a provision of Australian Commonwealth "
+    "legislation is -- whether its key terms admit of degree, require contextual "
+    "judgment, or lack a fixed extension, versus being precisely and objectively "
+    "bounded. Classify the provision's vagueness as exactly one of: high, medium, low.\n\n"
+    "- high: the provision's operative test relies on open-ended, context-dependent "
+    "standards throughout (e.g. \"reasonable in the circumstances\", \"in good faith\").\n"
+    "- medium: the provision is mostly precise but contains one open-textured element.\n"
+    "- low: the provision's operative test uses only precisely bounded terms (fixed "
+    "thresholds, enumerated categories, defined terms).\n\n"
+    "Return ONLY valid JSON -- no markdown fences, no commentary. Schema: "
+    '{"tag": "high"|"medium"|"low", "reasoning": "one sentence"}'
+)
+
+
+def build_signal2_prompt(section_text: str) -> str:
+    return f"## Provision text\n{section_text}\n\n## Task\nClassify this provision's open-texture/vagueness."

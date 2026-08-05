@@ -96,3 +96,11 @@ def test_parse_signal_response_returns_none_for_invalid_tag_value():
 def test_parse_signal_response_returns_none_when_reasoning_missing():
     raw = '{"tag": "high"}'
     assert parse_signal_response(raw) is None
+
+
+from lexaugraph.codifiability import build_signal2_prompt  # noqa: E402
+
+
+def test_build_signal2_prompt_includes_section_text():
+    prompt = build_signal2_prompt("Reasonable steps must be taken in the circumstances.")
+    assert "Reasonable steps must be taken in the circumstances." in prompt
