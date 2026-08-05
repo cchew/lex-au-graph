@@ -82,3 +82,44 @@ def test_pagerank_centrality_sums_across_act_and_section_nodes():
         "/akn/au/act/2000/1", "/akn/au/act/2000/1#sec-1", "/akn/au/act/2000/1#sec-2",
     ]
     assert _pagerank_centrality(centrality, node_ids) == pytest.approx(0.03)
+
+
+from lexaugraph.complexity import _defined_term_count, _word_count  # noqa: E402
+
+
+def test_defined_term_count_counts_only_this_acts_terms():
+    g = _base_graph()
+    g.add_node(
+        "/akn/au/act/2000/1#term-x", type="defined_term",
+        act_frbr_uri="/akn/au/act/2000/1",
+    )
+    g.add_node(
+        "/akn/au/act/1999/9#term-y", type="defined_term",
+        act_frbr_uri="/akn/au/act/1999/9",
+    )
+    assert _defined_term_count(g, "/akn/au/act/2000/1") == 1
+
+
+def test_defined_term_count_zero_when_none_defined():
+    g = _base_graph()
+    assert _defined_term_count(g, "/akn/au/act/2000/1") == 0
+
+
+def test_word_count_sums_section_text_word_counts():
+    g = nx.MultiDiGraph()
+    g.add_node("/akn/au/act/2000/1", type="act", title="Test Act 2000")
+    g.add_node(
+        "/akn/au/act/2000/1#sec-1", type="section",
+        act_frbr_uri="/akn/au/act/2000/1", text="one two three",
+    )
+    g.add_node(
+        "/akn/au/act/2000/1#sec-2", type="section",
+        act_frbr_uri="/akn/au/act/2000/1", text="four five",
+    )
+    section_ids = ["/akn/au/act/2000/1#sec-1", "/akn/au/act/2000/1#sec-2"]
+    assert _word_count(g, section_ids) == 5
+
+
+def test_word_count_empty_section_list_returns_zero():
+    g = _base_graph()
+    assert _word_count(g, []) == 0

@@ -37,3 +37,14 @@ def _pagerank_centrality(centrality: dict[str, float], node_ids: list[str]) -> f
     intra-Act and anchor-resolved cross-Act citations target a Section node.
     """
     return sum(centrality.get(nid, 0.0) for nid in node_ids)
+
+
+def _defined_term_count(graph: nx.MultiDiGraph, act_frbr_uri: str) -> int:
+    return sum(
+        1 for _, data in graph.nodes(data=True)
+        if data.get("type") == "defined_term" and data.get("act_frbr_uri") == act_frbr_uri
+    )
+
+
+def _word_count(graph: nx.MultiDiGraph, section_ids: list[str]) -> int:
+    return sum(len(graph.nodes[sid]["text"].split()) for sid in section_ids)
