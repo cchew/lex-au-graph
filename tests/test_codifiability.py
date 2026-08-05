@@ -223,3 +223,40 @@ def test_fetch_batch_results_maps_failed_entry_to_none():
     results = fetch_batch_results("batch-1", _FakeClient(), id_map)
 
     assert results == {"/akn/au/act/2000/1#sec-1": None}
+
+
+from lexaugraph.codifiability import compute_agreement  # noqa: E402
+
+
+def test_compute_agreement_not_computed_when_llm_tag_missing():
+    assert compute_agreement(None, "low", "high") == "not_computed"
+
+
+def test_compute_agreement_not_computed_when_vagueness_tag_missing():
+    assert compute_agreement("high", None, "high") == "not_computed"
+
+
+def test_compute_agreement_full_when_all_three_normalize_to_high():
+    # llm_tag=high (as-stored), vagueness_tag=low -> inverted to high, density=high
+    assert compute_agreement("high", "low", "high") == "full"
+
+
+def test_compute_agreement_full_when_all_three_normalize_to_medium():
+    assert compute_agreement("medium", "medium", "medium") == "full"
+
+
+def test_compute_agreement_partial_when_two_of_three_match():
+    # llm_tag=high, vagueness_tag=high -> inverted to low, density=high
+    # normalized: [high, low, high] -- two match (high), one differs (low)
+    assert compute_agreement("high", "high", "high") == "partial"
+
+
+def test_compute_agreement_none_when_all_three_differ():
+    # llm_tag=high, vagueness_tag=medium -> inverted to medium, density=low
+    # normalized: [high, medium, low] -- all distinct
+    assert compute_agreement("high", "medium", "low") == "none"
+
+
+def test_compute_agreement_vagueness_medium_inverts_to_medium():
+    # confirms the medium->medium inversion edge case explicitly
+    assert compute_agreement("medium", "medium", "low") == "partial"  # [medium, medium, low]

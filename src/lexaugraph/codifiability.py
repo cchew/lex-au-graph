@@ -180,3 +180,26 @@ def fetch_batch_results(batch_id: str, client, id_map: dict[str, str]) -> dict[s
             continue
         results[node_id] = parse_signal_response(text_blocks[0])
     return results
+
+
+_VAGUENESS_INVERSION: dict[str, str] = {"high": "low", "medium": "medium", "low": "high"}
+
+
+def compute_agreement(
+    llm_tag: Literal["low", "medium", "high"] | None,
+    vagueness_tag: Literal["low", "medium", "high"] | None,
+    prescriptive_density_tag: Literal["low", "medium", "high"],
+) -> Literal["full", "partial", "none", "not_computed"]:
+    """Compares the three signals on a single normalized polarity where "high"
+    always means "more codifiable". llm_tag and prescriptive_density_tag are used
+    as-stored; vagueness_tag is inverted (high vagueness -> low codifiability-
+    implied) since it's stored in its own natural sense, not this comparison's."""
+    if llm_tag is None or vagueness_tag is None:
+        return "not_computed"
+    normalized = [llm_tag, _VAGUENESS_INVERSION[vagueness_tag], prescriptive_density_tag]
+    distinct = set(normalized)
+    if len(distinct) == 1:
+        return "full"
+    if len(distinct) == 2:
+        return "partial"
+    return "none"
