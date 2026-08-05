@@ -32,3 +32,9 @@ def _prescriptive_density_tag(count: int) -> Literal["low", "medium", "high"]:
     if count >= 2:
         return "medium"
     return "low"
+
+
+def _parse_verification_status(
+    act_frbr_uri: str, verification_data: dict[str, str]
+) -> Literal["spot_checked", "not_yet_checked"]:
+    return verification_data.get(act_frbr_uri, "not_yet_checked")

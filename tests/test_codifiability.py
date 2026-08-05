@@ -42,3 +42,20 @@ def test_prescriptive_density_tag_buckets_by_count():
     assert _prescriptive_density_tag(4) == "medium"
     assert _prescriptive_density_tag(5) == "high"
     assert _prescriptive_density_tag(10) == "high"
+
+
+from lexaugraph.codifiability import _parse_verification_status  # noqa: E402
+
+
+def test_parse_verification_status_defaults_to_not_yet_checked():
+    assert _parse_verification_status("/akn/au/act/1988/119", {}) == "not_yet_checked"
+
+
+def test_parse_verification_status_returns_recorded_value():
+    data = {"/akn/au/act/1988/119": "spot_checked"}
+    assert _parse_verification_status("/akn/au/act/1988/119", data) == "spot_checked"
+
+
+def test_parse_verification_status_unrecorded_act_defaults_even_with_other_data_present():
+    data = {"/akn/au/act/1988/119": "spot_checked"}
+    assert _parse_verification_status("/akn/au/act/1999/9", data) == "not_yet_checked"
