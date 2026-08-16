@@ -61,7 +61,7 @@ def match_acts(alrc_df: pd.DataFrame, graph: LexAuGraph) -> dict[int, str]:
 
     matches: dict[int, str] = {}
     for idx, row in alrc_df.iterrows():
-        normalized = normalize_title(str(row.get("title", "")))
+        normalized = normalize_title(str(row.get("modernName", "")))
         if normalized and normalized[0] in title_to_frbr:
             matches[idx] = title_to_frbr[normalized[0]]
     return matches
@@ -113,7 +113,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("complexity_validation_results.json"))
     args = parser.parse_args()
 
-    alrc_df = pd.read_excel(args.alrc_excel)
+    alrc_df = pd.read_excel(args.alrc_excel, sheet_name="Data")
     graph = LexAuGraph.load(args.graph)
     results = run_validation(alrc_df, graph)
 

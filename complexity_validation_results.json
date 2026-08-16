@@ -1,0 +1,35 @@
+{
+  "matched_acts": 1026,
+  "metrics": {
+    "Conditional_statements_word_count": {
+      "pearson": 0.9770204371641976,
+      "spearman": 0.8671358829119362,
+      "n": 1026
+    },
+    "Reasonableness_word_count": {
+      "pearson": 0.9689795321431125,
+      "spearman": 0.9238345098167546,
+      "n": 1026
+    },
+    "Good_faith_word_count": {
+      "pearson": 0.9834385949544449,
+      "spearman": 0.9363677693954024,
+      "n": 1026
+    },
+    "Unfair_word_count": {
+      "pearson": 0.8010132224215583,
+      "spearman": 0.9420543370502396,
+      "n": 1026
+    },
+    "Fair_word_count": {
+      "pearson": 0.8267098477370066,
+      "spearman": 0.8277255804802495,
+      "n": 1026
+    },
+    "Unjust_word_count": {
+      "pearson": 0.8121466083218636,
+      "spearman": 0.9428277704799704,
+      "n": 1026
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "total_rules": 262,
+  "unresolved_count": 109,
+  "scored_count": 153,
+  "batch_failed_count": 0,
+  "agreement_rate": 0.3464052287581699,
+  "confusion_matrix": {
+    "low": {
+      "low": 42,
+      "high": 42,
+      "medium": 22
+    },
+    "medium": {
+      "low": 7,
+      "medium": 3,
+      "high": 27
+    },
+    "high": {
+      "high": 8,
+      "medium": 2
+    }
+  },
+  "per_domain_confusion_matrix": {
+    "ndb": {
+      "low": {
+        "low": 38,
+        "high": 5,
+        "medium": 9
+      },
+      "medium": {
+        "low": 2
+      }
+    },
+    "sis-death-benefits": {
+      "low": {
+        "medium": 11,
+        "high": 19,
+        "low": 4
+      },
+      "medium": {
+        "low": 5,
+        "medium": 1,
+        "high": 9
+      },
+      "high": {
+        "high": 1
+      }
+    },
+    "ssa-bereavement": {
+      "low": {
+        "high": 18,
+        "medium": 2
+      },
+      "medium": {
+        "high": 18,
+        "medium": 2
+      },
+      "high": {
+        "high": 7,
+        "medium": 2
+      }
+    }
+  },
+  "degenerate_domains_note": "ndb has zero 'high' labels (0/54) and sis-death-benefits has only 1/50 'high' -- their per-domain rows are uninformative for medium/high discrimination specifically, per the design spec's Validation section."
+}

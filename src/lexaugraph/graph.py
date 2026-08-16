@@ -389,4 +389,17 @@ class LexAuGraph:
             )
         g = cls()
         g.graph = nx.node_link_graph(data, edges="edges")
+        g._rebuild_indexes()
         return g
+
+    def _rebuild_indexes(self) -> None:
+        """Repopulate _title_index and _section_number_index from the loaded
+        graph -- node_link_data/node_link_graph round-trips self.graph only,
+        not these derived lookup dicts built during add_act_data()."""
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get("type") == "act" and data.get("title"):
+                self._title_index[data["title"].lower()] = node_id
+            elif data.get("type") == "section":
+                section_number = _section_number_from_eid(data.get("eid", ""))
+                if section_number:
+                    self._section_number_index.setdefault(data["act_frbr_uri"], {})[section_number] = node_id
