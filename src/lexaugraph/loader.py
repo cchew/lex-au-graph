@@ -177,7 +177,13 @@ def _extract_defined_terms(
         term_text = (term_el.text or "").strip()
         if not term_text:
             continue
-        def_text = "".join(def_el.itertext()).strip()
+        # The AKN <def> wraps only the definiens. The operator that types the
+        # definition (" means " / " includes " / " has the meaning given by " /
+        # " has the same meaning as ") sits in the <term>'s tail. Keep it —
+        # without it an inclusive or pointer definition reads as an exhaustive one.
+        operator = " ".join((term_el.tail or "").split())
+        definiens = "".join(def_el.itertext()).strip()
+        def_text = f"{operator} {definiens}".strip() if operator else definiens
         section_eid = _ancestor_section_eid(p)
         defined_terms.append(DefinedTermNode(
             term=term_text.lower(),

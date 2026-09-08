@@ -108,6 +108,35 @@ def test_parse_act_defined_term_display_case():
     assert pi.display_term == "personal information"
 
 
+TERM_OPERATOR_INDEX_ENTRY = {
+    "name": "Sample Sea Protection Act 2006",
+    "year": 2006,
+    "number": 22,
+    "effective_date": "2026-06-04",
+    "xml_path": "term-operator-sample.xml",
+}
+
+
+def test_defined_term_definition_text_keeps_means_operator():
+    # The AKN <def> element wraps only the definiens; the operator (" means ")
+    # lives in the <term>'s tail and was being dropped.
+    data = parse_act(FIXTURES / "term-operator-sample.xml", TERM_OPERATOR_INDEX_ENTRY)
+    af = next(t for t in data.defined_terms if t.term == "approved form")
+    assert af.definition_text == "means a form approved by the Minister."
+
+
+def test_defined_term_definition_text_keeps_inclusive_operator():
+    data = parse_act(FIXTURES / "term-operator-sample.xml", TERM_OPERATOR_INDEX_ENTRY)
+    fv = next(t for t in data.defined_terms if t.term == "foreign vessel")
+    assert fv.definition_text == "includes a vessel registered outside Australia."
+
+
+def test_defined_term_definition_text_keeps_pointer_operator():
+    data = parse_act(FIXTURES / "term-operator-sample.xml", TERM_OPERATOR_INDEX_ENTRY)
+    rp = next(t for t in data.defined_terms if t.term == "relevant period")
+    assert rp.definition_text == "has the meaning given by section 7."
+
+
 def test_parse_act_extracts_same_act_ref():
     data = parse_act(FIXTURES / "privacy-act-1988.xml", INDEX_ENTRY)
     same_act_refs = [r for r in data.ref_edges if not r.is_cross_act]

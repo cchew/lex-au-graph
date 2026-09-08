@@ -5,7 +5,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 > [!NOTE]
 > [search.gov.au](https://search.gov.au)'s Align stream ("Common Ground", Department of Finance, alpha — see [Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026) tackles the same problem at whole-of-government scale: surfacing linkage and divergence across Acts and agencies.
 
-**Status: v0.12.0**
+**Status: v0.12.2**
 
 ## Uses / used by
 
@@ -105,6 +105,7 @@ Registers ten tools on a FastMCP server. Connect via any MCP client (Claude Desk
 
 ## Versions
 
+- **v0.12.2** - Fixed defined-term extraction dropping the definitional operator. The AKN `<def>` element wraps only the definiens; the operator that types the definition (`means`, `includes`, `has the meaning given by`, `has the same meaning as`) sits in the `<term>`'s tail and was discarded, so an inclusive or pointer definition was stored as if it were exhaustive. ~11,400 of 29,250 tagged terms use a non-`means` operator. 337 tests.
 - **v0.12.1** - Fixed `LexAuGraph.load()` not rebuilding title/section-number lookup indexes after deserialization.
 - **v0.12.0** - Entity/office nodes and `mentions` edges, structural legislative complexity metrics, codifiability scoring (LLM tags + regex prescriptive density). 334 tests.
 - **v0.11.0** - Section-scoped `resolve_definition`, resolving in-Act term collisions by exact section then nearest enclosing Part/Division. 228 tests.

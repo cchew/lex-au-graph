@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/2006/22/!main"/>
+          <FRBRuri value="/akn/au/act/2006/22"/>
+          <FRBRdate date="2006-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/2006/22/eng@2026-06-04/!main"/>
+          <FRBRuri value="/akn/au/act/2006/22/eng@2026-06-04"/>
+          <FRBRdate date="2026-06-04" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/2006/22/eng@2026-06-04/!main.akn"/>
+          <FRBRuri value="/akn/au/act/2006/22/eng@2026-06-04/!main.akn"/>
+          <FRBRdate date="2026-06-22" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-1">
+        <num>Part 1</num>
+        <heading>Preliminary</heading>
+        <section eId="part-1__sec-3">
+          <num>3</num>
+          <heading>Definitions</heading>
+          <content>
+            <p>In this Act:</p>
+            <p><term refersTo="#term-approved-form">approved form</term> means <def>a form approved by the Minister.</def></p>
+            <p><term refersTo="#term-foreign-vessel">foreign vessel</term> includes <def>a vessel registered outside Australia.</def></p>
+            <p><term refersTo="#term-relevant-period">relevant period</term> has the meaning given by <def><ref href="#part-1__sec-7">section 7</ref>.</def></p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>
