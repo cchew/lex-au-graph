@@ -700,6 +700,38 @@ def test_act_title_re_no_leading_fragment_or_unbalanced_parens(definition_text, 
     assert title.count("(") == title.count(")")
 
 
+import signal
+
+
+@pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="needs POSIX SIGALRM")
+def test_act_title_re_no_catastrophic_backtracking():
+    """A run of tokens the interior alternation can match multiple ways, with no
+    trailing ' Act YYYY', must not trigger exponential backtracking. A SIGALRM
+    timer aborts the search; the CPython 3.11+ regex engine polls for signals,
+    so an exponential regex raises Timeout here while a linear one returns None.
+
+    RED on b4736ac (interior alternation carried a redundant `No\\.?` branch that
+    overlapped `[A-Z][\\w...]*` over the same span -> `(x|x)*` -> 2**n)."""
+    pathological = "A" + " No" * 40 + " zz"
+
+    class _Timeout(Exception):
+        pass
+
+    def _handler(signum, frame):
+        raise _Timeout
+
+    old = signal.signal(signal.SIGALRM, _handler)
+    signal.setitimer(signal.ITIMER_REAL, 2.0)
+    try:
+        result = _ACT_TITLE_RE.search(pathological)
+    except _Timeout:
+        raise AssertionError("_ACT_TITLE_RE did not complete in 2s (catastrophic backtracking)")
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old)
+    assert result is None
+
+
 @pytest.fixture()
 def paren_cross_act_resolver() -> DefinitionResolver:
     """Two-Act graph where the target Act's title carries a parenthetical

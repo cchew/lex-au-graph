@@ -21,9 +21,13 @@ _POINTER_RE = re.compile(
 # connective words that sit between capitalised words ("A New Tax System (...)").
 # The match is anchored on the first capitalised token, so a leading "the"/"in"
 # before the title is naturally excluded while "(Supervision)" mid-title is kept.
+# The interior alternation must stay mutually exclusive per token: adding a branch
+# that overlaps `[A-Z][\w’'.-]*` over the same span (e.g. `No\.?`) makes it an
+# `(x|x)*` shape and the match exponential. The "Act (No. 1) 2019" form is
+# handled by the separate optional tail group, not the interior alternation.
 _ACT_TITLE_RE = re.compile(
     r"\b([A-Z][\w’'.-]*"
-    r"(?: (?:\([^)]*\)|[A-Z][\w’'.-]*|a|an|and|of|the|for|on|to|or|No\.?))*"
+    r"(?: (?:\([^)]*\)|[A-Z][\w’'.-]*|a|an|and|of|the|for|on|to|or))*"
     r" Act(?: \(No\.? \d+\))? \d{4})\b"
 )
 
