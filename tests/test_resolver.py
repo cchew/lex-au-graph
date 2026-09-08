@@ -50,9 +50,9 @@ def test_term_act_counts_is_memoised(multi_act_resolver, monkeypatch):
 
 
 def test_list_multi_act_terms_unchanged_after_refactor(multi_act_resolver):
-    # Golden: capture the summaries the pre-refactor code produced and assert equality.
+    # Golden: capture the summaries at min_acts=3 threshold (personal information and control).
     summaries = multi_act_resolver.list_multi_act_terms(min_acts=3)
-    assert [s.term for s in summaries] == ["personal information"]
+    assert sorted([s.term for s in summaries]) == ["control", "personal information"]
 
 
 def test_resolve_definition_finds_term(resolver: DefinitionResolver):
@@ -187,15 +187,25 @@ def multi_act_resolver() -> DefinitionResolver:
     # "personal information" defined in 3 Acts — should surface at min_acts=3
     g.add_act_data(_make_act(
         "/akn/au/act/1988/119", "Privacy Act 1988",
-        [_make_term("personal information", "personal information", "/akn/au/act/1988/119")],
+        [
+            _make_term("personal information", "personal information", "/akn/au/act/1988/119"),
+            _make_term("control", "control", "/akn/au/act/1988/119", section_eid="sec-3"),
+            _make_term("xydefined", "xydefined", "/akn/au/act/1988/119", section_eid="sec-4"),
+        ],
     ))
     g.add_act_data(_make_act(
         "/akn/au/act/2012/63", "My Health Records Act 2012",
-        [_make_term("personal information", "personal information", "/akn/au/act/2012/63")],
+        [
+            _make_term("personal information", "personal information", "/akn/au/act/2012/63"),
+            _make_term("control", "control", "/akn/au/act/2012/63", section_eid="sec-3"),
+        ],
     ))
     g.add_act_data(_make_act(
         "/akn/au/act/1999/119", "Aged Care Act 1997",
-        [_make_term("personal information", "personal information", "/akn/au/act/1999/119")],
+        [
+            _make_term("personal information", "personal information", "/akn/au/act/1999/119"),
+            _make_term("control", "control", "/akn/au/act/1999/119", section_eid="sec-3"),
+        ],
     ))
     # "australian resident" defined in only 2 Acts — should be excluded at min_acts=3
     g.add_act_data(_make_act(
@@ -275,8 +285,8 @@ def test_count_acts_counts_act_nodes_only(multi_act_resolver: DefinitionResolver
 
 
 def test_count_valid_defined_terms_counts_all_valid_term_nodes(multi_act_resolver: DefinitionResolver):
-    # 3 "personal information" + 2 "australian resident" + 3 "does not" = 8 defined_term nodes
-    assert multi_act_resolver.count_valid_defined_terms() == 8
+    # 3 "personal information" + 2 "australian resident" + 3 "does not" + 3 "control" + 1 "xydefined" = 12 defined_term nodes
+    assert multi_act_resolver.count_valid_defined_terms() == 12
 
 
 def test_count_valid_defined_terms_excludes_terms_missing_definition_text():
@@ -591,3 +601,53 @@ def test_follow_cross_act_no_self_loop(cross_act_resolver):
         "widget", "has the same meaning as in the Alpha Act 2000", "/akn/au/act/2000/1"
     )
     assert out["via"]["resolved"] is False
+
+
+MULTI_DEF_URI = "/akn/au/act/2020/50"
+THREE_ACT_TERM_URI = "/akn/au/act/1988/119"
+
+
+@pytest.fixture()
+def multi_def_resolver() -> DefinitionResolver:
+    """One Act that defines 'associate' in two sections: part-2__sec-10 and part-5__sec-40."""
+    g = LexAuGraph()
+    terms = [
+        DefinedTermNode(
+            term="associate", display_term="associate",
+            act_frbr_uri=MULTI_DEF_URI, section_eid="part-2__sec-10",
+            definition_text="means a person in partnership or joint venture",
+        ),
+        DefinedTermNode(
+            term="associate", display_term="associate",
+            act_frbr_uri=MULTI_DEF_URI, section_eid="part-5__sec-40",
+            definition_text="means a person affiliated with the corporation",
+        ),
+    ]
+    g.add_act_data(_make_act(MULTI_DEF_URI, "Corporations Act 2020", terms))
+    return DefinitionResolver(g)
+
+
+def test_get_act_definitions_groups_all_terms(cross_act_resolver):
+    rows = cross_act_resolver.get_act_definitions("/akn/au/act/2001/2")
+    assert {r["term"] for r in rows} == {"widget"}
+    assert rows[0]["definition_text"] == "means a small mechanical part"
+    assert rows[0]["section_eid"] == "sec-3"
+
+
+def test_get_act_definitions_multiply_defined_yields_multiple_rows(multi_def_resolver):
+    # Act defines "associate" in part-2__sec-10 and part-5__sec-40
+    rows = [r for r in multi_def_resolver.get_act_definitions(MULTI_DEF_URI) if r["term"] == "associate"]
+    assert sorted(r["section_eid"] for r in rows) == ["part-2__sec-10", "part-5__sec-40"]
+
+
+def test_get_act_definitions_inlines_cross_act(cross_act_resolver):
+    rows = cross_act_resolver.get_act_definitions("/akn/au/act/2000/1")
+    row = next(r for r in rows if r["term"] == "widget")
+    assert row["definition_text"] == "means a small mechanical part"
+    assert row["via"]["resolved"] is True
+
+
+def test_get_act_definitions_sets_act_alike(multi_act_resolver):
+    rows = multi_act_resolver.get_act_definitions(THREE_ACT_TERM_URI)
+    assert next(r for r in rows if r["term"] == "control")["act_alike"] is True
+    assert next(r for r in rows if r["term"] == "xydefined")["act_alike"] is False  # 1 Act

@@ -237,6 +237,36 @@ class DefinitionResolver:
             })
         return sorted(results, key=lambda r: r["term"])
 
+    def get_act_definitions(self, act_frbr_uri: str) -> list[dict]:
+        counts = self._term_act_counts()
+        out: list[dict] = []
+        for _nid, data in self._graph.graph.nodes(data=True):
+            if data.get("type") != "defined_term":
+                continue
+            if data.get("act_frbr_uri") != act_frbr_uri:
+                continue
+            term = data.get("term", "")
+            text = data.get("definition_text") or ""
+            eid = data.get("section_eid") or ""
+            if not term or not text or not eid:
+                continue
+            entry = {
+                "term": term,
+                "display_term": data.get("display_term", term),
+                "section_eid": eid,
+                "definition_text": text,
+                "act_alike": (
+                    self._passes_term_junk_filter(term)
+                    and counts.get(term, 0) >= self.ACT_ALIKE_MIN_ACTS
+                ),
+            }
+            via = self._follow_cross_act(term, text, act_frbr_uri)
+            if via is not None:
+                entry["definition_text"] = via["definition_text"]
+                entry["via"] = via["via"]
+            out.append(entry)
+        return sorted(out, key=lambda r: (r["term"], r["section_eid"]))
+
     def entities_in_section(self, eid: str, act_frbr_uri: str) -> list[dict[str, Any]]:
         """Entities (offices/agencies) mentioned in a given section, via outgoing
         mentions edges. Includes the entity's own defining section if it mentions
