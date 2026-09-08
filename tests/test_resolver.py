@@ -23,6 +23,38 @@ def resolver() -> DefinitionResolver:
     return DefinitionResolver(g)
 
 
+def test_passes_term_junk_filter():
+    r = DefinitionResolver(LexAuGraph())
+    assert r._passes_term_junk_filter("control") is True
+    assert r._passes_term_junk_filter("xyz") is False        # len < 4
+    assert r._passes_term_junk_filter("and") is False        # _JUNK_TERM_PATTERN
+    assert r._passes_term_junk_filter("does not") is False
+
+
+def test_term_act_counts_counts_distinct_acts(multi_act_resolver):
+    counts = multi_act_resolver._term_act_counts()
+    assert counts["personal information"] == 3
+    assert counts["does not"] == 3
+
+
+def test_term_act_counts_is_memoised(multi_act_resolver, monkeypatch):
+    calls = {"n": 0}
+    real_nodes_method = multi_act_resolver._graph.graph.nodes
+    def counting_nodes(*a, **k):
+        calls["n"] += 1
+        return real_nodes_method(*a, **k)
+    monkeypatch.setattr(multi_act_resolver._graph.graph, "nodes", counting_nodes)
+    multi_act_resolver._term_act_counts()
+    multi_act_resolver._term_act_counts()
+    assert calls["n"] <= 1  # built once, then cached
+
+
+def test_list_multi_act_terms_unchanged_after_refactor(multi_act_resolver):
+    # Golden: capture the summaries the pre-refactor code produced and assert equality.
+    summaries = multi_act_resolver.list_multi_act_terms(min_acts=3)
+    assert [s.term for s in summaries] == ["personal information"]
+
+
 def test_resolve_definition_finds_term(resolver: DefinitionResolver):
     result = resolver.resolve_definition("personal information", "/akn/au/act/1988/119")
     assert result is not None

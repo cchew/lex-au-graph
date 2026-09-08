@@ -1,4 +1,5 @@
 from __future__ import annotations
+import functools
 import re
 from typing import Any, Optional
 
@@ -23,9 +24,29 @@ def _containment_prefix(section_eid: str) -> str:
 
 
 class DefinitionResolver:
+    ACT_ALIKE_MIN_ACTS = 2  # Task 0b: confirm against term-comparison's index
+
     def __init__(self, graph: LexAuGraph, centrality: dict[str, float] | None = None) -> None:
         self._graph = graph
         self._centrality = centrality
+
+    def _passes_term_junk_filter(self, term: str) -> bool:
+        return len(term) >= 4 and not _JUNK_TERM_PATTERN.match(term)
+
+    @functools.cached_property
+    def _term_act_counts_cache(self) -> dict[str, int]:
+        acts_by_term: dict[str, set[str]] = {}
+        for _nid, data in self._graph.graph.nodes(data=True):
+            if data.get("type") != "defined_term":
+                continue
+            if not data.get("definition_text") or not data.get("section_eid"):
+                continue
+            term = data.get("term", "")
+            acts_by_term.setdefault(term, set()).add(data.get("act_frbr_uri", ""))
+        return {t: len(a) for t, a in acts_by_term.items()}
+
+    def _term_act_counts(self) -> dict[str, int]:
+        return self._term_act_counts_cache
 
     def resolve_definition(
         self, term: str, act_frbr_uri: str, section_eid: Optional[str] = None
@@ -251,7 +272,7 @@ class DefinitionResolver:
             act_count = len(info["acts"])
             if act_count < min_acts:
                 continue
-            if len(term) < 4 or _JUNK_TERM_PATTERN.match(term):
+            if not self._passes_term_junk_filter(term):
                 continue
             summaries.append(
                 MultiActTermSummary(
