@@ -16,8 +16,15 @@ _POINTER_RE = re.compile(
     r"^(has the (same )?meaning|means the same as).{0,120}\b(Act|Regulations)\b",
     re.IGNORECASE | re.DOTALL,
 )
+# Match a full AU Act short title, including interior parenthetical qualifiers
+# (e.g. "Superannuation Industry (Supervision) Act 1993") and lowercase
+# connective words that sit between capitalised words ("A New Tax System (...)").
+# The match is anchored on the first capitalised token, so a leading "the"/"in"
+# before the title is naturally excluded while "(Supervision)" mid-title is kept.
 _ACT_TITLE_RE = re.compile(
-    r"\b([A-Z][\w’'()-]*(?: [A-Z][\w’'()-]*)* Act(?: \(No\.? \d+\))? \d{4})\b"
+    r"\b([A-Z][\w’'.-]*"
+    r"(?: (?:\([^)]*\)|[A-Z][\w’'.-]*|a|an|and|of|the|for|on|to|or|No\.?))*"
+    r" Act(?: \(No\.? \d+\))? \d{4})\b"
 )
 
 

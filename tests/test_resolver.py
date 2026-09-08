@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from lexaugraph.graph import LexAuGraph
 from lexaugraph.loader import parse_act
-from lexaugraph.resolver import DefinitionResolver
+from lexaugraph.resolver import DefinitionResolver, _ACT_TITLE_RE
 from lexaugraph.models import ActData, ActNode, DefinedTermNode, SectionNode, RefEdge, RelationType
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -651,3 +651,96 @@ def test_get_act_definitions_sets_act_alike(multi_act_resolver):
     rows = multi_act_resolver.get_act_definitions(THREE_ACT_TERM_URI)
     assert next(r for r in rows if r["term"] == "control")["act_alike"] is True
     assert next(r for r in rows if r["term"] == "xydefined")["act_alike"] is False  # 1 Act
+
+
+# --- _ACT_TITLE_RE: parenthetical-qualifier act titles (R11 bug) -----------------
+
+ACT_TITLE_CASES = [
+    (
+        "has the meaning given by the Superannuation Industry (Supervision) Act 1993.",
+        "Superannuation Industry (Supervision) Act 1993",
+    ),
+    (
+        "has the same meaning as enactment has in the Australian Capital Territory "
+        "(Self-Government) Act 1988.",
+        "Australian Capital Territory (Self-Government) Act 1988",
+    ),
+    (
+        "has the meaning given by section 41 of the A New Tax System "
+        "(Australian Business Number) Act 1999.",
+        "A New Tax System (Australian Business Number) Act 1999",
+    ),
+    (
+        "has the same meaning as in the Carbon Credits (Carbon Farming Initiative) Act 2011.",
+        "Carbon Credits (Carbon Farming Initiative) Act 2011",
+    ),
+    (
+        "has the same meaning as in the Archives Act 1983.",
+        "Archives Act 1983",
+    ),
+    (
+        "has the same meaning as in the Appropriation Act (No. 1) 2019.",
+        "Appropriation Act (No. 1) 2019",
+    ),
+]
+
+
+@pytest.mark.parametrize("definition_text,expected", ACT_TITLE_CASES)
+def test_act_title_re_extracts_full_title(definition_text, expected):
+    m = _ACT_TITLE_RE.search(definition_text)
+    assert m is not None, f"no match for: {definition_text!r}"
+    assert m.group(1) == expected
+
+
+@pytest.mark.parametrize("definition_text,expected", ACT_TITLE_CASES)
+def test_act_title_re_no_leading_fragment_or_unbalanced_parens(definition_text, expected):
+    title = _ACT_TITLE_RE.search(definition_text).group(1)
+    assert title[0].isupper()
+    assert not title.lower().startswith(("the ", "in ", "of ", "by "))
+    assert title.count("(") == title.count(")")
+
+
+@pytest.fixture()
+def paren_cross_act_resolver() -> DefinitionResolver:
+    """Two-Act graph where the target Act's title carries a parenthetical
+    qualifier ('Superannuation Industry (Supervision) Act 1993'). Act A points
+    'superannuation entity' at it; Act B defines the term substantively."""
+    g = LexAuGraph()
+    act_a = ActData(
+        act_node=ActNode(frbr_uri="/akn/au/act/1993/1", title="Host Act 1993", year=1993),
+        sections=[SectionNode(eid="sec-2", act_frbr_uri="/akn/au/act/1993/1", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="superannuation entity", display_term="superannuation entity",
+            act_frbr_uri="/akn/au/act/1993/1", section_eid="sec-2",
+            definition_text="has the meaning given by the Superannuation Industry (Supervision) Act 1993.",
+        )],
+        ref_edges=[],
+    )
+    act_b = ActData(
+        act_node=ActNode(
+            frbr_uri="/akn/au/act/1993/78",
+            title="Superannuation Industry (Supervision) Act 1993",
+            year=1993,
+        ),
+        sections=[SectionNode(eid="sec-10", act_frbr_uri="/akn/au/act/1993/78", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="superannuation entity", display_term="superannuation entity",
+            act_frbr_uri="/akn/au/act/1993/78", section_eid="sec-10",
+            definition_text="means a regulated superannuation fund",
+        )],
+        ref_edges=[],
+    )
+    g.add_act_data(act_a)
+    g.add_act_data(act_b)
+    return DefinitionResolver(g)
+
+
+def test_follow_cross_act_resolves_parenthetical_qualifier_title(paren_cross_act_resolver):
+    out = paren_cross_act_resolver._follow_cross_act(
+        "superannuation entity",
+        "has the meaning given by the Superannuation Industry (Supervision) Act 1993.",
+        "/akn/au/act/1993/1",
+    )
+    assert out["definition_text"] == "means a regulated superannuation fund"
+    assert out["via"]["act_title"] == "Superannuation Industry (Supervision) Act 1993"
+    assert out["via"]["resolved"] is True
