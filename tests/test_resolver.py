@@ -530,3 +530,64 @@ def test_find_entity_excludes_non_entity_terms(registrar_resolver: DefinitionRes
 
 def test_find_entity_no_match_returns_empty_list(registrar_resolver: DefinitionResolver):
     assert registrar_resolver.find_entity("nonexistent xyz") == []
+
+
+@pytest.fixture()
+def cross_act_resolver() -> DefinitionResolver:
+    """Two-Act graph: Act A ('Alpha Act 2000') defines 'widget' as a pointer
+    into Act B ('Beta Act 2001'), which defines 'widget' substantively in
+    sec-3. Gamma Act 1999 is never loaded -- the out-of-corpus target case."""
+    g = LexAuGraph()
+    act_a = ActData(
+        act_node=ActNode(frbr_uri="/akn/au/act/2000/1", title="Alpha Act 2000", year=2000),
+        sections=[SectionNode(eid="sec-2", act_frbr_uri="/akn/au/act/2000/1", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="widget", display_term="widget",
+            act_frbr_uri="/akn/au/act/2000/1", section_eid="sec-2",
+            definition_text="has the same meaning as in the Beta Act 2001",
+        )],
+        ref_edges=[],
+    )
+    act_b = ActData(
+        act_node=ActNode(frbr_uri="/akn/au/act/2001/2", title="Beta Act 2001", year=2001),
+        sections=[SectionNode(eid="sec-3", act_frbr_uri="/akn/au/act/2001/2", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="widget", display_term="widget",
+            act_frbr_uri="/akn/au/act/2001/2", section_eid="sec-3",
+            definition_text="means a small mechanical part",
+        )],
+        ref_edges=[],
+    )
+    g.add_act_data(act_a)
+    g.add_act_data(act_b)
+    return DefinitionResolver(g)
+
+
+def test_follow_cross_act_resolves_in_corpus(cross_act_resolver):
+    out = cross_act_resolver._follow_cross_act(
+        "widget", "has the same meaning as in the Beta Act 2001", "/akn/au/act/2000/1"
+    )
+    assert out["definition_text"] == "means a small mechanical part"
+    assert out["via"] == {"act_title": "Beta Act 2001", "section_eid": "sec-3", "resolved": True}
+
+
+def test_follow_cross_act_unresolved_when_act_absent(cross_act_resolver):
+    out = cross_act_resolver._follow_cross_act(
+        "widget", "has the same meaning as in the Gamma Act 1999", "/akn/au/act/2000/1"
+    )
+    assert out["definition_text"] == "has the same meaning as in the Gamma Act 1999"
+    assert out["via"] == {"act_title": "Gamma Act 1999", "section_eid": None, "resolved": False}
+
+
+def test_follow_cross_act_returns_none_for_substantive_def(cross_act_resolver):
+    assert cross_act_resolver._follow_cross_act(
+        "widget", "means a small mechanical part", "/akn/au/act/2001/2"
+    ) is None
+
+
+def test_follow_cross_act_no_self_loop(cross_act_resolver):
+    # Pointer that names its own Act -> do not follow, treat as unresolved.
+    out = cross_act_resolver._follow_cross_act(
+        "widget", "has the same meaning as in the Alpha Act 2000", "/akn/au/act/2000/1"
+    )
+    assert out["via"]["resolved"] is False

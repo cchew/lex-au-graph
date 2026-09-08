@@ -12,6 +12,18 @@ _JUNK_TERM_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_POINTER_RE = re.compile(
+    r"^(has the (same )?meaning|means the same as).{0,120}\b(Act|Regulations)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_ACT_TITLE_RE = re.compile(
+    r"\b([A-Z][\w’'()-]*(?: [A-Z][\w’'()-]*)* Act(?: \(No\.? \d+\))? \d{4})\b"
+)
+
+
+def _normalise_title(t: str) -> str:
+    return " ".join(t.split()).casefold()
+
 
 def _containment_prefix(section_eid: str) -> str:
     """Return the Part/Division containment path for a section eid, e.g.
@@ -47,6 +59,35 @@ class DefinitionResolver:
 
     def _term_act_counts(self) -> dict[str, int]:
         return self._term_act_counts_cache
+
+    @functools.cached_property
+    def _act_title_index_cache(self) -> dict[str, str]:
+        idx: dict[str, str] = {}
+        for nid, data in self._graph.graph.nodes(data=True):
+            if data.get("type") == "act" and data.get("title"):
+                idx[_normalise_title(data["title"])] = nid
+        return idx
+
+    def _act_title_index(self) -> dict[str, str]:
+        return self._act_title_index_cache
+
+    def _follow_cross_act(self, term: str, def_text: str, source_uri: str) -> dict | None:
+        if len(def_text) > 200 or not _POINTER_RE.match(def_text.strip()):
+            return None
+        m = _ACT_TITLE_RE.search(def_text)
+        title = m.group(1) if m else ""
+        target_uri = self._act_title_index().get(_normalise_title(title)) if title else None
+        if target_uri and target_uri != source_uri:
+            target = self.resolve_definition(term, target_uri, section_eid=None)
+            if target is not None:
+                return {
+                    "definition_text": target.definition_text,
+                    "via": {"act_title": target.act_title, "section_eid": target.section_eid, "resolved": True},
+                }
+        return {
+            "definition_text": def_text,
+            "via": {"act_title": title, "section_eid": None, "resolved": False},
+        }
 
     def resolve_definition(
         self, term: str, act_frbr_uri: str, section_eid: Optional[str] = None
