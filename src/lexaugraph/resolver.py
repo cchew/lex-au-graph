@@ -88,6 +88,23 @@ class DefinitionResolver:
         m = _ACT_TITLE_RE.search(def_text)
         title = m.group(1) if m else ""
         target_uri = self._act_title_index().get(_normalise_title(title)) if title else None
+        if not target_uri and title:
+            # The regex anchors on the first capitalised token, so a leading
+            # "Part III of the" fragment can bridge into the match via "of"/
+            # "the" and get captured along with the real title. Retry with
+            # progressively-trimmed leading tokens, accepting the first
+            # suffix that both starts with an uppercase letter and resolves,
+            # so the tooltip shows the clean title rather than the fragment.
+            tokens = title.split(" ")
+            for i in range(1, len(tokens)):
+                suffix = " ".join(tokens[i:])
+                if not suffix or not suffix[0].isupper():
+                    continue
+                suffix_uri = self._act_title_index().get(_normalise_title(suffix))
+                if suffix_uri:
+                    title = suffix
+                    target_uri = suffix_uri
+                    break
         if target_uri and target_uri != source_uri:
             target = self.resolve_definition(term, target_uri, section_eid=None)
             if target is not None:

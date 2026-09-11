@@ -776,3 +776,69 @@ def test_follow_cross_act_resolves_parenthetical_qualifier_title(paren_cross_act
     assert out["definition_text"] == "means a regulated superannuation fund"
     assert out["via"]["act_title"] == "Superannuation Industry (Supervision) Act 1993"
     assert out["via"]["resolved"] is True
+
+
+# --- _follow_cross_act: leading Part/Division fragment over-capture --------------
+
+
+@pytest.fixture()
+def part_prefix_cross_act_resolver() -> DefinitionResolver:
+    """Two-Act graph where the pointer text is prefixed with 'Part III of the',
+    which _ACT_TITLE_RE's connective-word bridging pulls into the match along
+    with the real title ('Part III of the Income Tax Assessment Act 1936'
+    instead of just 'Income Tax Assessment Act 1936'). _follow_cross_act's
+    trim-and-retry must recover the clean title and resolve against it."""
+    g = LexAuGraph()
+    act_a = ActData(
+        act_node=ActNode(frbr_uri="/akn/au/act/2020/1", title="Host Act 2020", year=2020),
+        sections=[SectionNode(eid="sec-2", act_frbr_uri="/akn/au/act/2020/1", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="taxable income", display_term="taxable income",
+            act_frbr_uri="/akn/au/act/2020/1", section_eid="sec-2",
+            definition_text="has the same meaning as in Part III of the Income Tax Assessment Act 1936.",
+        )],
+        ref_edges=[],
+    )
+    act_b = ActData(
+        act_node=ActNode(
+            frbr_uri="/akn/au/act/1936/27",
+            title="Income Tax Assessment Act 1936",
+            year=1936,
+        ),
+        sections=[SectionNode(eid="sec-6", act_frbr_uri="/akn/au/act/1936/27", heading="Definitions", text="...")],
+        defined_terms=[DefinedTermNode(
+            term="taxable income", display_term="taxable income",
+            act_frbr_uri="/akn/au/act/1936/27", section_eid="sec-6",
+            definition_text="means assessable income less allowable deductions",
+        )],
+        ref_edges=[],
+    )
+    g.add_act_data(act_a)
+    g.add_act_data(act_b)
+    return DefinitionResolver(g)
+
+
+def test_follow_cross_act_retries_trimmed_title_for_part_prefix(part_prefix_cross_act_resolver):
+    out = part_prefix_cross_act_resolver._follow_cross_act(
+        "taxable income",
+        "has the same meaning as in Part III of the Income Tax Assessment Act 1936.",
+        "/akn/au/act/2020/1",
+    )
+    assert out["via"]["resolved"] is True
+    assert out["via"]["act_title"] == "Income Tax Assessment Act 1936"
+    assert out["definition_text"] == "means assessable income less allowable deductions"
+
+
+def test_follow_cross_act_falls_back_to_untrimmed_title_when_no_suffix_resolves():
+    """No trimmed suffix of the over-captured title is in the corpus (the Act
+    genuinely isn't loaded), so the retry loop must not invent a resolution --
+    fall back to the original untrimmed, unresolved title exactly as before
+    this fix (regression guard on the fallback path)."""
+    resolver = DefinitionResolver(LexAuGraph())
+    out = resolver._follow_cross_act(
+        "taxable income",
+        "has the same meaning as in Part III of the Nonexistent Act 1999.",
+        "/akn/au/act/2020/1",
+    )
+    assert out["via"]["resolved"] is False
+    assert out["via"]["act_title"] == "Part III of the Nonexistent Act 1999"
