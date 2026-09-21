@@ -227,6 +227,34 @@ def test_multi_section_list_citation_produces_one_ref_edge_per_section():
     assert all(r.target_href is None and r.matched_title is None for r in multi_section_refs)
 
 
+UNRESOLVED_REF_INDEX_ENTRY = {
+    "name": "Sample Act 1999",
+    "year": 1999,
+    "number": 1,
+    "effective_date": "2026-09-21",
+    "xml_path": "unresolved-ref-sample.xml",
+}
+
+
+def test_ref_with_unresolved_class_reads_target_class():
+    # lex-au's converter now stamps a deterministic stub href onto every
+    # unresolved cross-Act <ref>, alongside its existing class="unresolved"
+    # marker. loader.py must read that marker into RefEdge.target_class so
+    # graph.py can tell a stub href apart from a genuinely resolved one.
+    data = parse_act(FIXTURES / "unresolved-ref-sample.xml", UNRESOLVED_REF_INDEX_ENTRY)
+    unresolved = next(r for r in data.ref_edges if r.target_href == "/akn/au/act/some-act-name-1999")
+    assert unresolved.target_class == "unresolved"
+
+
+def test_ref_without_class_attribute_leaves_target_class_none():
+    # A ref with a real, resolved href never carries class="unresolved" --
+    # target_class must be None (not "", not missing the attribute check),
+    # so _resolve_ref's href-acceptance branch is unaffected for this case.
+    data = parse_act(FIXTURES / "unresolved-ref-sample.xml", UNRESOLVED_REF_INDEX_ENTRY)
+    resolved = next(r for r in data.ref_edges if r.target_href == "/akn/au/act/2001/50")
+    assert resolved.target_class is None
+
+
 def test_extract_defined_terms_classifies_entity_type():
     index_entry = {
         "name": "Sample Registrar Act 1961", "year": 1961, "number": 12,

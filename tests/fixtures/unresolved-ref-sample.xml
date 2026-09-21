@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1999/1/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1"/>
+          <FRBRdate date="1999-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-09-21/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-09-21"/>
+          <FRBRdate date="2026-09-21" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-09-21/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-09-21/!main.akn"/>
+          <FRBRdate date="2026-09-21" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-13">
+          <num>13</num>
+          <heading>Application</heading>
+          <content>
+            <p>See also <ref href="/akn/au/act/some-act-name-1999" class="unresolved">the Sample Target Act 2001</ref> for related matters.</p>
+            <p>This section is subject to <ref href="/akn/au/act/2001/50">the Sample Resolved Act 2001</ref>.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

@@ -84,7 +84,10 @@ class LexAuGraph:
             if normalized_own_title is not None:
                 self._retry_pending_refs(normalized_own_title[0], act.frbr_uri)
 
+        section_occurrence_counts: dict[str, int] = {}
         for section in act_data.sections:
+            section_occurrence_counts[section.eid] = section_occurrence_counts.get(section.eid, 0) + 1
+            section.occurrence = section_occurrence_counts[section.eid]
             self.graph.add_node(
                 section.node_id,
                 type="section",
@@ -269,7 +272,7 @@ class LexAuGraph:
         href = ref.target_href
         if href and href.startswith("#"):
             return f"{act_frbr_uri}{href}"
-        if href and href.startswith("/akn/au"):
+        if href and href.startswith("/akn/au") and ref.target_class != "unresolved":
             return href
         if not ref.is_cross_act:
             if ref.matched_section:

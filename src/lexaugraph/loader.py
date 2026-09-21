@@ -112,6 +112,7 @@ def _parse_sections(
 
         for ref_el in section.findall(f".//{AKN}ref"):
             href = ref_el.get("href") or ""
+            ref_class = ref_el.get("class")
             ref_text = "".join(ref_el.itertext()).strip()
             is_cross_act = not href.startswith("#")
             classification = relation_classifier.classify_relation(ref_text, text, client)
@@ -120,6 +121,7 @@ def _parse_sections(
                 ref_text=ref_text,
                 is_cross_act=is_cross_act,
                 target_href=href,
+                target_class=ref_class,
                 relation=classification.relation,
                 relation_confidence=classification.relation_confidence,
                 extraction_confidence=_TAGGED_REF_EXTRACTION_CONFIDENCE,

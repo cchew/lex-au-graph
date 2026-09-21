@@ -15,6 +15,33 @@ def test_section_node_id():
     assert s.node_id == "/akn/au/act/1988/119#part-I__sec-6"
 
 
+def test_section_node_id_default_occurrence_unchanged():
+    """Default occurrence=1 must produce exactly today's node_id -- no
+    suffix -- so every non-duplicated section (the vast majority) is
+    unaffected by adding this field."""
+    s = SectionNode(
+        eid="part-I__sec-6",
+        act_frbr_uri="/akn/au/act/1988/119",
+        heading="Interpretation",
+        text="In this Act...",
+    )
+    assert s.occurrence == 1
+    assert s.node_id == "/akn/au/act/1988/119#part-I__sec-6"
+
+
+def test_section_node_id_second_occurrence_suffixed():
+    """occurrence=2 appends a __2 suffix, keeping two same-eId sections
+    distinct -- the same disambiguation shape as DefinedTermNode."""
+    s = SectionNode(
+        eid="part-I__sec-6",
+        act_frbr_uri="/akn/au/act/1988/119",
+        heading="Interpretation (duplicate eId)",
+        text="A second section sharing the same eId, a pre-existing lex-au defect.",
+        occurrence=2,
+    )
+    assert s.node_id == "/akn/au/act/1988/119#part-I__sec-6__2"
+
+
 def test_defined_term_node_id():
     t = DefinedTermNode(
         term="personal information",
@@ -87,6 +114,22 @@ def test_ref_edge_defaults_target_href_and_matched_title_to_none():
     r = RefEdge(source_id="/akn/au/act/1988/119#sec-1", ref_text="the Corporations Act 2001", is_cross_act=True)
     assert r.target_href is None
     assert r.matched_title is None
+
+
+def test_ref_edge_defaults_target_class_to_none():
+    r = RefEdge(source_id="/akn/au/act/1988/119#sec-1", ref_text="the Corporations Act 2001", is_cross_act=True)
+    assert r.target_class is None
+
+
+def test_ref_edge_target_class_can_be_set_to_unresolved():
+    r = RefEdge(
+        source_id="/akn/au/act/1988/119#sec-1",
+        ref_text="the Corporations Act 2001",
+        is_cross_act=True,
+        target_href="/akn/au/act/some-act-name-1999",
+        target_class="unresolved",
+    )
+    assert r.target_class == "unresolved"
 
 
 def test_ref_edge_matched_title_set_for_untagged_path():

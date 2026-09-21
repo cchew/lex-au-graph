@@ -43,10 +43,14 @@ class SectionNode:
     heading: Optional[str]
     text: str
     provision_type: str = "section"
+    occurrence: int = 1
 
     @property
     def node_id(self) -> str:
-        return f"{self.act_frbr_uri}#{self.eid}"
+        base = f"{self.act_frbr_uri}#{self.eid}"
+        if self.occurrence > 1:
+            return f"{base}__{self.occurrence}"
+        return base
 
 
 @dataclass
@@ -74,6 +78,7 @@ class RefEdge:
     ref_text: str
     is_cross_act: bool
     target_href: Optional[str] = None
+    target_class: Optional[str] = None
     matched_title: Optional[str] = None
     matched_section: Optional[str] = None
     relation: RelationType = RelationType.CITES

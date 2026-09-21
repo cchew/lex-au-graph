@@ -112,6 +112,46 @@ def test_multi_meaning_terms_survive_as_distinct_nodes():
     assert term_b.occurrence == 2
 
 
+def test_duplicate_eid_sections_survive_as_distinct_nodes():
+    """Real lex-au corpus defect (out of scope to fix there): two different
+    <section> elements within the same Act can share an identical @eId.
+    Before this fix, SectionNode.node_id had no disambiguation, so the
+    second add_node() call for the same node_id silently overwrote the
+    first's attributes in networkx and one section's content/edges were
+    lost. Mirrors the existing DefinedTermNode occurrence fix exactly."""
+    act = ActNode(frbr_uri="/akn/au/act/1936/27", title="Income Tax Assessment Act 1936", year=1936)
+    section_a = SectionNode(
+        eid="part-III__sec-23", act_frbr_uri="/akn/au/act/1936/27",
+        heading="Exemptions (first)", text="First section body.",
+    )
+    section_b = SectionNode(
+        eid="part-III__sec-23", act_frbr_uri="/akn/au/act/1936/27",
+        heading="Exemptions (second, duplicate eId)", text="Second section body.",
+    )
+    data = ActData(act_node=act, sections=[section_a, section_b], defined_terms=[], ref_edges=[])
+
+    g = LexAuGraph()
+    g.add_act_data(data)
+
+    section_nodes = [
+        n for n, d in g.graph.nodes(data=True)
+        if d.get("type") == "section" and d.get("eid") == "part-III__sec-23"
+    ]
+    assert len(section_nodes) == 2
+
+    headings = {g.graph.nodes[n]["heading"] for n in section_nodes}
+    assert "Exemptions (first)" in headings
+    assert "Exemptions (second, duplicate eId)" in headings
+
+    # occurrence side effect is visible on the caller's objects, mirroring
+    # the DefinedTermNode behaviour.
+    assert section_a.occurrence == 1
+    assert section_b.occurrence == 2
+    assert section_a.node_id != section_b.node_id
+    assert section_a.node_id in g.graph.nodes
+    assert section_b.node_id in g.graph.nodes
+
+
 def test_same_act_ref_edge(graph_with_privacy: LexAuGraph):
     src = "/akn/au/act/1988/119#part-I__sec-13"
     tgt = "/akn/au/act/1988/119#part-I__sec-6"
@@ -569,6 +609,70 @@ def test_self_citation_is_filtered_not_treated_as_candidate():
     assert g.graph.out_degree(section.node_id) == 0
     assert g.citation_stats["untagged"]["self_citation_filtered"] == 1
     assert g.citation_candidates_report() == []
+
+
+def test_unresolved_stub_href_falls_through_to_title_resolution():
+    # lex-au's converter now stamps a deterministic stub href onto every
+    # unresolved cross-Act <ref>, alongside class="unresolved". Before the
+    # fix, _resolve_ref treated any href.startswith("/akn/au") as resolved,
+    # so this ref would have wrongly wired to the decoy Act sitting at the
+    # stub's own path instead of the real title match. This regression test
+    # proves the stub href is ignored and title-index resolution wins.
+    source = ActNode(frbr_uri="/akn/au/act/1999/1", title="Citing Act 1999", year=1999)
+    section = SectionNode(eid="sec-13", act_frbr_uri=source.frbr_uri, heading=None, text="...")
+    stub_ref = RefEdge(
+        source_id=section.node_id,
+        ref_text="Sample Target Act 2001",
+        is_cross_act=True,
+        target_href="/akn/au/act/1999/999",  # a stub that happens to collide with a real node
+        target_class="unresolved",
+    )
+    source_data = ActData(act_node=source, sections=[section], defined_terms=[], ref_edges=[stub_ref])
+
+    decoy = ActNode(frbr_uri="/akn/au/act/1999/999", title="Decoy Act 1999", year=1999)
+    decoy_data = ActData(act_node=decoy, sections=[], defined_terms=[], ref_edges=[])
+
+    target = ActNode(frbr_uri="/akn/au/act/2001/50", title="Sample Target Act 2001", year=2001)
+    target_data = ActData(act_node=target, sections=[], defined_terms=[], ref_edges=[])
+
+    # Decoy loaded FIRST so it already occupies the stub href's path when
+    # source's ref is resolved -- this is exactly the scenario where the
+    # pre-fix code would wrongly wire the edge to it.
+    g = LexAuGraph()
+    g.add_act_data(decoy_data)
+    g.add_act_data(source_data)
+    g.add_act_data(target_data)
+
+    assert g.graph.has_edge(section.node_id, target.frbr_uri)
+    assert not g.graph.has_edge(section.node_id, decoy.frbr_uri)
+
+
+def test_real_resolved_href_still_resolves_directly():
+    # Regression guard: a ref with a REAL resolved href (target_class is None,
+    # the currently-correct case) must keep resolving via the href exactly as
+    # before -- ref_text deliberately does not match any Act title, so if this
+    # fell through to title resolution instead, no edge would be created.
+    source = ActNode(frbr_uri="/akn/au/act/1999/2", title="Another Citing Act 1999", year=1999)
+    section = SectionNode(eid="sec-13", act_frbr_uri=source.frbr_uri, heading=None, text="...")
+    real_ref = RefEdge(
+        source_id=section.node_id,
+        ref_text="see the other Act",
+        is_cross_act=True,
+        target_href="/akn/au/act/2001/50",
+    )
+    source_data = ActData(act_node=source, sections=[section], defined_terms=[], ref_edges=[real_ref])
+
+    target = ActNode(frbr_uri="/akn/au/act/2001/50", title="Sample Target Act 2001", year=2001)
+    target_data = ActData(act_node=target, sections=[], defined_terms=[], ref_edges=[])
+
+    # target loaded FIRST: href-based resolution is immediate (no pending-refs
+    # retry queue for the href path), so the target node must already exist
+    # when source's ref is resolved.
+    g = LexAuGraph()
+    g.add_act_data(target_data)
+    g.add_act_data(source_data)
+
+    assert g.graph.has_edge(section.node_id, target.frbr_uri)
 
 
 def test_citation_stats_bucket_totals(graph_with_privacy: LexAuGraph):
