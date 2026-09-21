@@ -90,6 +90,15 @@ def _parse_sections(
 ) -> tuple[list[SectionNode], list[RefEdge]]:
     sections: list[SectionNode] = []
     ref_edges: list[RefEdge] = []
+    # Duplicate-eId sections (a real, out-of-scope lex-au corpus defect) must
+    # have their occurrence set BEFORE any RefEdge is built below, since each
+    # RefEdge captures source_id=node.node_id at parse time. Setting occurrence
+    # later (e.g. in graph.py's _add_act_nodes) is too late -- every citation
+    # belonging to a second-or-later occurrence would already have captured the
+    # wrong (first-occurrence) node_id. Mirrors graph.py's identical counting
+    # logic, kept there too as a harmless no-op safety net for tests that
+    # hand-construct ActData with occurrence already set.
+    section_occurrence_counts: dict[str, int] = {}
 
     for section in root.iter(f"{AKN}section"):
         eid = section.get("eId", "")
@@ -101,12 +110,15 @@ def _parse_sections(
         text = " ".join("".join(section.itertext()).split())
         provision_type = "schedule" if "schedule" in eid.lower() else "section"
 
+        section_occurrence_counts[eid] = section_occurrence_counts.get(eid, 0) + 1
+
         node = SectionNode(
             eid=eid,
             act_frbr_uri=act_frbr_uri,
             heading=heading,
             text=text,
             provision_type=provision_type,
+            occurrence=section_occurrence_counts[eid],
         )
         sections.append(node)
 

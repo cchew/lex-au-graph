@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/1999/1/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1"/>
+          <FRBRdate date="1999-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-09-21/!main"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-09-21"/>
+          <FRBRdate date="2026-09-21" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/1999/1/eng@2026-09-21/!main.akn"/>
+          <FRBRuri value="/akn/au/act/1999/1/eng@2026-09-21/!main.akn"/>
+          <FRBRdate date="2026-09-21" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+      <part eId="part-I">
+        <num>Part I</num>
+        <heading>Preliminary</heading>
+        <section eId="part-I__sec-6">
+          <num>6</num>
+          <heading>First occurrence (no citation)</heading>
+          <content>
+            <p>This is the first section sharing the duplicate eId. It carries no citation.</p>
+          </content>
+        </section>
+        <section eId="part-I__sec-6">
+          <num>6</num>
+          <heading>Second occurrence (carries a citation)</heading>
+          <content>
+            <p>This second, duplicate-eId section refers to <ref href="#part-I__sec-13">section 13</ref>.</p>
+          </content>
+        </section>
+        <section eId="part-I__sec-13">
+          <num>13</num>
+          <heading>Target section</heading>
+          <content>
+            <p>The target of the citation above.</p>
+          </content>
+        </section>
+      </part>
+    </body>
+  </act>
+</akomaNtoso>

@@ -255,6 +255,36 @@ def test_ref_without_class_attribute_leaves_target_class_none():
     assert resolved.target_class is None
 
 
+DUPLICATE_EID_WITH_REF_INDEX_ENTRY = {
+    "name": "Sample Act 1999",
+    "year": 1999,
+    "number": 1,
+    "effective_date": "2026-09-21",
+    "xml_path": "duplicate-eid-with-ref-sample.xml",
+}
+
+
+def test_citation_in_second_duplicate_eid_section_attributed_to_correct_node():
+    # Real-corpus bug: occurrence used to only get set later, in graph.py's
+    # _add_act_nodes -- but each RefEdge captures source_id=node.node_id at
+    # PARSE time, before that later step ever runs. So a citation living in
+    # the SECOND (or later) occurrence of a duplicate-eId section was always
+    # captured with the FIRST occurrence's (unsuffixed) node_id -- the wrong
+    # section entirely. _parse_sections must set node.occurrence before
+    # building any RefEdge, so the citation lands on the right node from the
+    # start.
+    data = parse_act(FIXTURES / "duplicate-eid-with-ref-sample.xml", DUPLICATE_EID_WITH_REF_INDEX_ENTRY)
+
+    first, second = (s for s in data.sections if s.eid == "part-I__sec-6")
+    assert first.occurrence == 1
+    assert second.occurrence == 2
+    assert first.node_id != second.node_id
+
+    ref = next(r for r in data.ref_edges if r.target_href == "#part-I__sec-13")
+    assert ref.source_id == second.node_id
+    assert ref.source_id != first.node_id
+
+
 def test_extract_defined_terms_classifies_entity_type():
     index_entry = {
         "name": "Sample Registrar Act 1961", "year": 1961, "number": 12,
