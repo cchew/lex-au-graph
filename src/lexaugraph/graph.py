@@ -84,6 +84,14 @@ class LexAuGraph:
             if normalized_own_title is not None:
                 self._retry_pending_refs(normalized_own_title[0], act.frbr_uri)
 
+        # Recomputes the same values loader.py's _parse_sections already set
+        # (both count in the same document order), and normalises any
+        # hand-built ActData (tests) whose sections carry a default/stale
+        # occurrence to real document order. Does NOT preserve a pre-set
+        # occurrence -- it overwrites it. Invariant this relies on:
+        # act_data.sections must stay in parse order between _parse_sections
+        # and add_act_data, since loader.py's RefEdge.source_id values were
+        # already frozen using that order.
         section_occurrence_counts: dict[str, int] = {}
         for section in act_data.sections:
             section_occurrence_counts[section.eid] = section_occurrence_counts.get(section.eid, 0) + 1

@@ -95,9 +95,10 @@ def _parse_sections(
     # RefEdge captures source_id=node.node_id at parse time. Setting occurrence
     # later (e.g. in graph.py's _add_act_nodes) is too late -- every citation
     # belonging to a second-or-later occurrence would already have captured the
-    # wrong (first-occurrence) node_id. Mirrors graph.py's identical counting
-    # logic, kept there too as a harmless no-op safety net for tests that
-    # hand-construct ActData with occurrence already set.
+    # wrong (first-occurrence) node_id. graph.py keeps an identical counting
+    # loop, which recomputes the same values for loader-produced data (a
+    # no-op) and normalises any hand-built ActData in tests to document
+    # order -- it does not preserve a pre-set occurrence, it overwrites it.
     section_occurrence_counts: dict[str, int] = {}
 
     for section in root.iter(f"{AKN}section"):
