@@ -5,7 +5,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 > [!NOTE]
 > [search.gov.au](https://search.gov.au)'s Align stream ("Common Ground", Department of Finance, alpha — see [Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026) tackles the same problem at whole-of-government scale: surfacing linkage and divergence across Acts and agencies.
 
-**Status: v0.13.0**
+**Status: v0.13.1**
 
 ## Uses / used by
 
@@ -105,6 +105,7 @@ Registers ten tools on a FastMCP server. Connect via any MCP client (Claude Desk
 
 ## Versions
 
+- **v0.13.1** - Hardened against two lex-au corpus defects downstream of the v0.3.1 converter work: unresolved cross-Act `<ref>` elements now carry a stub href that `_resolve_ref` correctly declines to treat as resolved (was short-circuiting title-index resolution), and duplicate-eId `<section>` elements get an `occurrence`-suffixed node id (mirroring the existing `DefinedTermNode` pattern) instead of silently merging into one node, with citations attributed to the correct occurrence's node from parse time. 375 tests.
 - **v0.13.0** - DefinitionResolver gains `get_act_definitions` (per-Act rows for the explorer's term-highlighting build, with a junk-term filter and a memoised distinct-Act count for the "Open in Act Alike" qualification), and a 1-hop cross-Act pointer follow (`_follow_cross_act`) that inlines "has the same meaning as in the X Act" definitions when the target Act is in-corpus, with a title-extraction retry for Part/Division-prefixed pointer phrasing. 365 tests.
 - **v0.12.2** - Fixed defined-term extraction dropping the definitional operator. The AKN `<def>` element wraps only the definiens; the operator that types the definition (`means`, `includes`, `has the meaning given by`, `has the same meaning as`) sits in the `<term>`'s tail and was discarded, so an inclusive or pointer definition was stored as if it were exhaustive. ~11,400 of 29,250 tagged terms use a non-`means` operator. 337 tests.
 - **v0.12.1** - Fixed `LexAuGraph.load()` not rebuilding title/section-number lookup indexes after deserialization.
