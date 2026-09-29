@@ -1,0 +1,68 @@
+# .github/workflows/rebuild-on-corpus-publish.yml
+name: Rebuild and publish graph
+
+on:
+  repository_dispatch:
+    types: [corpus-published]
+  workflow_dispatch: {}
+
+concurrency:
+  group: graph-rebuild
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lexaugraph
+        run: pip install -e ".[dev]"
+
+      - name: Restore corpus from Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/restore_corpus_from_hf.py --repo cchew/lex-au --local-dir corpus
+
+      - name: Verify corpus size floor
+        run: |
+          count=$(python -c "import json; print(len(json.load(open('corpus/index.json'))['acts']))")
+          echo "Corpus has $count Acts."
+          if [ "$count" -lt 2500 ]; then
+            echo "::error::Corpus size ($count) is below the safety floor (2500) -- refusing to build against a possibly-partial corpus."
+            exit 1
+          fi
+
+      - name: Run test suite
+        run: pytest -q
+
+      - name: Build graph
+        run: lexaugraph build --corpus-dir corpus --output graph.json
+
+      - name: Compute centrality
+        run: lexaugraph centrality --graph graph.json
+
+      - name: Compute structural complexity
+        run: lexaugraph complexity --graph graph.json
+        # Deliberately no `lexaugraph codifiability` step here -- signal 1/2
+        # are LLM-gated (never run in CI, per this repo's constraints) and
+        # the free-only signal-3 run would still overwrite any manually
+        # populated LLM tags in a previously published codifiability.json.
+        # See docs/superpowers/specs/2026-09-29-corpus-triggered-rebuild-design.md,
+        # "Open question: codifiability.json".
+
+      - name: Publish to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf upload cchew/lex-au-graph graph.json graph.json --repo-type dataset
+          hf upload cchew/lex-au-graph centrality.json centrality.json --repo-type dataset
+          hf upload cchew/lex-au-graph complexity.json complexity.json --repo-type dataset
