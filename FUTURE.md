@@ -39,13 +39,12 @@ because the `^`-anchored pointer regex matched 0 nodes; with the operator prepen
 has signal. Consumers must rebuild `graph.json`: lex-au-explorer, term-comparison
 (Act Alike — redeployed 2026-09-08), ClauseKit (deferred, logged to its `FUTURE.md`).
 
-## Gap 1: `termlinks.py` extraction coverage (lex-au-owned, tracked here for the graph impact)
+## Gap 1: `termlinks.py` extraction coverage — owned by lex-au
 
-The graph covers ~29% of Acts (894 / 3,076) because it inherits lex-au's `<term>`/`<def>`
-markup. The Task 0 spike confirmed the missing population is **not** Acts with zero
-defined terms (those are mostly disguised amendment Acts with no own definitions) — it is
-extraction quality *inside* the 894 covered Acts: bold/italic-formatted definienda,
-`<ref>`-bearing pointer definitions, and "in relation to"-qualified definiens that
-lex-au's `inject_terms` / `inject_list_defs` currently skip. A non-LLM enrichment wired
-into `lexaugraph build` was assessed (spike 0a) and rejected: it flips ~5 of 81 real gap
-Acts for ~9 new nodes. The lever is the lex-au pattern rewrite, not a graph-build step.
+Moved to [lex-au's `FUTURE.md`](https://github.com/cchew/lex-au/blob/main/FUTURE.md#termlinkspy--inject_terms--inject_list_defs-miss-bolditalic-formatted-definienda)
+2026-09-29 (`termlinks.py` / `inject_terms` / `inject_list_defs` miss bold/italic-formatted
+definienda) — the fix belongs in lex-au's extraction pipeline, not this repo's graph
+loader. Graph impact: only ~29% of Acts (894 / 3,076) get usable definition extraction as
+a result. lex-au-graph assessed and rejected a non-LLM graph-side workaround (spike 0a):
+it flips ~5 of 81 real gap Acts for ~9 new nodes, not worth carrying as a permanent
+graph-build enrichment.
