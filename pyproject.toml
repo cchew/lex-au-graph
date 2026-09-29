@@ -17,7 +17,7 @@ dependencies = [
     "anthropic>=0.40.0",
     "numpy>=1.26",
     "scipy>=1.13",
-    "huggingface_hub>=0.28",
+    "huggingface_hub>=0.34",
 ]
 
 [project.scripts]
