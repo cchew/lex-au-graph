@@ -16,10 +16,11 @@ def test_restore_calls_snapshot_download_with_expected_args(monkeypatch, tmp_pat
     module = _load_module()
     calls = {}
 
-    def fake_snapshot_download(*, repo_id, repo_type, local_dir):
+    def fake_snapshot_download(*, repo_id, repo_type, local_dir, allow_patterns):
         calls["repo_id"] = repo_id
         calls["repo_type"] = repo_type
         calls["local_dir"] = local_dir
+        calls["allow_patterns"] = allow_patterns
         return local_dir
 
     monkeypatch.setattr(module, "snapshot_download", fake_snapshot_download)
@@ -31,5 +32,6 @@ def test_restore_calls_snapshot_download_with_expected_args(monkeypatch, tmp_pat
         "repo_id": "cchew/lex-au",
         "repo_type": "dataset",
         "local_dir": local_dir,
+        "allow_patterns": ["index.json", "xml/*.xml"],
     }
     assert result == local_dir
