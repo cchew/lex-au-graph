@@ -66,3 +66,4 @@ jobs:
           hf upload cchew/lex-au-graph graph.json graph.json --repo-type dataset
           hf upload cchew/lex-au-graph centrality.json centrality.json --repo-type dataset
           hf upload cchew/lex-au-graph complexity.json complexity.json --repo-type dataset
+          hf upload cchew/lex-au-graph hf-readme.md README.md --repo-type dataset
