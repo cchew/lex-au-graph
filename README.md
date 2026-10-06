@@ -133,4 +133,6 @@ Registers ten tools on a FastMCP server. Connect via any MCP client (Claude Desk
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+Code: MIT - see [LICENSE](LICENSE).
+
+Published datasets ([cchew/lex-au-graph](https://huggingface.co/datasets/cchew/lex-au-graph)): CC BY 4.0, matching the lex-au source corpus. Source legislation is Crown copyright - Commonwealth of Australia, reproduced under the [PSI Framework](https://www.legislation.gov.au/Help/Copyright).

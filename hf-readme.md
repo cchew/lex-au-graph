@@ -1,5 +1,5 @@
 ---
-license: mit
+license: cc-by-4.0
 language:
 - en
 tags:
@@ -44,3 +44,7 @@ publishes a corpus update:
 
 See [github.com/cchew/lex-au-graph](https://github.com/cchew/lex-au-graph)
 for source code, the MCP server, and version history.
+
+## Licence
+
+CC BY 4.0. Source legislation is Crown copyright - Commonwealth of Australia; reproduction permitted for non-commercial and research purposes under the [PSI Framework](https://www.legislation.gov.au/Help/Copyright). The code that builds this dataset is MIT-licensed.
