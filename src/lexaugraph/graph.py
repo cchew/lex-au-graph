@@ -124,6 +124,7 @@ class LexAuGraph:
                 section_eid=term.section_eid,
                 definition_text=term.definition_text,
                 entity_type=term.entity_type,
+                scope=term.scope,
             )
             if term.section_eid:
                 section_id = f"{term.act_frbr_uri}#{term.section_eid}"
@@ -177,6 +178,7 @@ class LexAuGraph:
             section_eid=term.section_eid,
             definition_text=term.definition_text,
             entity_type=term.entity_type,
+            scope=term.scope,
         )
         section_id = f"{term.act_frbr_uri}#{term.section_eid}"
         if section_id in self.graph.nodes:

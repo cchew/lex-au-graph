@@ -36,6 +36,15 @@ def _normalise_title(t: str) -> str:
     return " ".join(t.split()).casefold()
 
 
+def _is_act_wide(data: dict[str, Any]) -> bool:
+    return data.get("scope", "act") == "act"
+
+
+def _within_scope(section_eid: str, scope: str) -> bool:
+    """True when section_eid is the scope container or sits inside it (eIds nest with "__")."""
+    return bool(scope) and (section_eid == scope or section_eid.startswith(scope + "__"))
+
+
 def _containment_prefix(section_eid: str) -> str:
     """Return the Part/Division containment path for a section eid, e.g.
     'part-II__dvs-1__sec-6AA' -> 'part-II__dvs-1'. Returns '' for a flat
@@ -60,7 +69,7 @@ class DefinitionResolver:
     def _term_act_counts_cache(self) -> dict[str, int]:
         acts_by_term: dict[str, set[str]] = {}
         for _nid, data in self._graph.graph.nodes(data=True):
-            if data.get("type") != "defined_term":
+            if data.get("type") != "defined_term" or not _is_act_wide(data):
                 continue
             if not data.get("definition_text") or not data.get("section_eid"):
                 continue
@@ -135,6 +144,21 @@ class DefinitionResolver:
                 continue
             candidates.append((def_section_eid, def_text, data))
 
+        if not candidates:
+            return None
+
+        # A locally scoped definition applies only inside its container, and there it beats an
+        # Act-wide meaning of the same word. Without a requesting section it never applies.
+        local = [c for c in candidates if not _is_act_wide(c[2])]
+        if local and section_eid:
+            applicable = [c for c in local if _within_scope(section_eid, c[2].get("scope", ""))]
+            if applicable:
+                applicable.sort(key=lambda c: -len(c[2].get("scope", "")))
+                candidates = [applicable[0]]
+            else:
+                candidates = [c for c in candidates if _is_act_wide(c[2])]
+        elif local:
+            candidates = [c for c in candidates if _is_act_wide(c[2])]
         if not candidates:
             return None
 
@@ -224,11 +248,15 @@ class DefinitionResolver:
             results.append(entry)
         return results
 
-    def find_all_definitions(self, term: str) -> list[DefinitionResult]:
+    def find_all_definitions(self, term: str, include_local: bool = False) -> list[DefinitionResult]:
+        """All definitions of a term across Acts. Act-wide only by default, so cross-Act comparison
+        is not diluted by section-local meanings; include_local=True adds them."""
         term_lower = term.lower().strip()
         results = []
         for _node_id, data in self._graph.graph.nodes(data=True):
             if data.get("type") != "defined_term":
+                continue
+            if not include_local and not _is_act_wide(data):
                 continue
             if data.get("term") == term_lower:
                 def_text = data.get("definition_text")
@@ -251,10 +279,12 @@ class DefinitionResolver:
         data = self._graph.graph.nodes.get(act_frbr_uri, {})
         return data.get("title", act_frbr_uri)
 
-    def get_act_terms(self, act_frbr_uri: str) -> list[dict[str, str]]:
+    def get_act_terms(self, act_frbr_uri: str, include_local: bool = False) -> list[dict[str, str]]:
         results = []
         for _node_id, data in self._graph.graph.nodes(data=True):
             if data.get("type") != "defined_term":
+                continue
+            if not include_local and not _is_act_wide(data):
                 continue
             if data.get("act_frbr_uri") != act_frbr_uri:
                 continue
@@ -265,11 +295,13 @@ class DefinitionResolver:
             })
         return sorted(results, key=lambda r: r["term"])
 
-    def get_act_definitions(self, act_frbr_uri: str) -> list[dict]:
+    def get_act_definitions(self, act_frbr_uri: str, include_local: bool = False) -> list[dict]:
         counts = self._term_act_counts()
         out: list[dict] = []
         for _nid, data in self._graph.graph.nodes(data=True):
             if data.get("type") != "defined_term":
+                continue
+            if not include_local and not _is_act_wide(data):
                 continue
             if data.get("act_frbr_uri") != act_frbr_uri:
                 continue
@@ -354,7 +386,7 @@ class DefinitionResolver:
         """
         groups: dict[str, dict[str, Any]] = {}
         for _node_id, data in self._graph.graph.nodes(data=True):
-            if data.get("type") != "defined_term":
+            if data.get("type") != "defined_term" or not _is_act_wide(data):
                 continue
             def_text = data.get("definition_text")
             section_eid = data.get("section_eid")
@@ -389,7 +421,7 @@ class DefinitionResolver:
     def count_valid_defined_terms(self) -> int:
         count = 0
         for _node_id, data in self._graph.graph.nodes(data=True):
-            if data.get("type") != "defined_term":
+            if data.get("type") != "defined_term" or not _is_act_wide(data):
                 continue
             if data.get("definition_text") and data.get("section_eid"):
                 count += 1

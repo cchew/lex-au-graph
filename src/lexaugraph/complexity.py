@@ -43,6 +43,7 @@ def _defined_term_count(graph: nx.MultiDiGraph, act_frbr_uri: str) -> int:
     return sum(
         1 for _, data in graph.nodes(data=True)
         if data.get("type") == "defined_term" and data.get("act_frbr_uri") == act_frbr_uri
+        and data.get("scope", "act") == "act"
     )
 
 

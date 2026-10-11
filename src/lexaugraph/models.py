@@ -62,6 +62,10 @@ class DefinedTermNode:
     definition_text: str
     occurrence: int = 1
     entity_type: Optional[str] = None
+    # "act" for a term defined for the whole Act; otherwise the eId of the container (section, Part,
+    # Division, Schedule...) the definition is local to, read from the AKN refersTo suffix
+    # `term-<slug>--<container eId>` that lex-au writes for locally scoped definitions.
+    scope: str = "act"
 
     @property
     def node_id(self) -> str:

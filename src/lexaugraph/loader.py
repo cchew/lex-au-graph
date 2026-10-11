@@ -200,13 +200,18 @@ def _extract_defined_terms(
         definiens = "".join(def_el.itertext()).strip()
         def_text = f"{operator} {definiens}".strip() if operator else definiens
         section_eid = _ancestor_section_eid(p)
+        refers_to = term_el.get("refersTo") or ""
+        scope = refers_to.split("--", 1)[1] if "--" in refers_to else "act"
         defined_terms.append(DefinedTermNode(
             term=term_text.lower(),
             display_term=term_text,
             act_frbr_uri=act_frbr_uri,
             section_eid=section_eid,
             definition_text=def_text,
-            entity_type=classify_entity_type(term_text),
+            # Entity (office/agency) classification is Act-wide only; a local definition must not
+            # become an entity node or add mentions edges.
+            entity_type=classify_entity_type(term_text) if scope == "act" else None,
+            scope=scope,
         ))
     return defined_terms
 
