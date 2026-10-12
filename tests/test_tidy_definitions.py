@@ -75,3 +75,10 @@ def test_resolver_lists_jurisdictions_cth_first() -> None:
     for uri in ("/akn/au-vic/act/2014/60", "/akn/au/act/1988/119", "/akn/au-act/act/2014/24"):
         g.add_act_data(ActData(act_node=ActNode(frbr_uri=uri, title=uri, year=2000), sections=[], defined_terms=[], ref_edges=[]))
     assert DefinitionResolver(g).jurisdictions() == ["Cth", "ACT", "Vic"]
+
+
+def test_leading_dash_before_the_connector_is_dropped() -> None:
+    got = tidy_definitions([_d("— means information about a person.", "sec-4")])
+    assert got[0].definition_text == "means information about a person."
+    kept = tidy_definitions([_d(", see section 4A.", "sec-4")])
+    assert kept[0].definition_text == ", see section 4A."

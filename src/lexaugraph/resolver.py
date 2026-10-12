@@ -73,6 +73,14 @@ def _is_internal_pointer(text: str) -> bool:
     )
 
 
+_LEAD_DASH_RE = re.compile(r"^[\s\u2014\u2013-]+(?=(?:means|includes?|has\b))", re.IGNORECASE)
+
+
+def _clean_lead(text: str) -> str:
+    """Drop the dash a list-form definition keeps before its connector ("\u2014 means ...")."""
+    return _LEAD_DASH_RE.sub("", text)
+
+
 def tidy_definitions(results: list[DefinitionResult]) -> list[DefinitionResult]:
     """Collapse the cards a reader would see as duplicates, leaving genuine multi-meaning terms alone.
 
@@ -103,7 +111,7 @@ def tidy_definitions(results: list[DefinitionResult]) -> list[DefinitionResult]:
             if host is not None and re.match(r"^[\s\u2014\u2013-]*includes?\b", r.definition_text, re.IGNORECASE):
                 host.definition_text = f"{host.definition_text} {r.definition_text.strip()}"
                 continue
-            merged.append(replace(r))
+            merged.append(replace(r, definition_text=_clean_lead(r.definition_text)))
         out.extend(merged)
     return out
 
