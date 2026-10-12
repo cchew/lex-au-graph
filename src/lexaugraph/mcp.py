@@ -36,14 +36,14 @@ def init(graph_path: Path) -> None:
         _codifiability = None
 
 
-def resolve_definition_tool(term: str, act_frbr_uri: str) -> str:
+def resolve_definition_tool(term: str, act_frbr_uri: str, section_eid: str | None = None) -> str:
     if _resolver is None:
         return "Error: graph not initialised. Run `lexaugraph build` first."
-    result = _resolver.resolve_definition(term, act_frbr_uri)
+    result = _resolver.resolve_definition(term, act_frbr_uri, section_eid=section_eid or None)
     if result is None:
         return f"No definition found for '{term}' in {act_frbr_uri}."
     return (
-        f"**{result.display_term}** ({result.act_title} - {result.section_eid})\n\n"
+        f"**{result.display_term}** ({result.act_label} - {result.section_eid})\n\n"
         f"{result.definition_text}"
     )
 
@@ -64,14 +64,18 @@ def cross_references_tool(eid: str, act_frbr_uri: str) -> str:
 
 
 @mcp.tool()
-def resolve_definition(term: str, act_frbr_uri: str) -> str:
-    """Resolve a defined term to its canonical definition and section citation within an AU Act.
+def resolve_definition(term: str, act_frbr_uri: str, section_eid: str | None = None) -> str:
+    """Resolve a defined term to its definition and section citation within an AU Act.
 
     Args:
         term: The term to resolve (e.g. "personal information")
-        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+        act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119" for the Commonwealth,
+            "/akn/au-vic/act/2014/60" for a Victorian Act)
+        section_eid: Optional eId of the section the term is being read in. Needed to reach a
+            definition that is local to a section, Part or Division, and to choose between several
+            definitions of one word in different Parts. Without it only Act-wide meanings apply.
     """
-    return resolve_definition_tool(term, act_frbr_uri)
+    return resolve_definition_tool(term, act_frbr_uri, section_eid)
 
 
 @mcp.tool()
@@ -118,33 +122,39 @@ def impact_analysis(eid: str, act_frbr_uri: str, max_hops: int = 3) -> str:
     return impact_analysis_tool(eid, act_frbr_uri, max_hops)
 
 
-def find_all_definitions_tool(term: str) -> str:
+def find_all_definitions_tool(term: str, include_local: bool = False, jurisdiction: str | None = None) -> str:
     if _resolver is None:
         return "Error: graph not initialised. Run `lexaugraph build` first."
-    results = _resolver.find_all_definitions(term)
+    results = _resolver.find_all_definitions(term, include_local=include_local)
+    if jurisdiction:
+        wanted = jurisdiction.strip().lower()
+        results = [r for r in results if r.jurisdiction.lower() == wanted]
     if not results:
         return f"No definitions found for '{term}'."
     parts = [
-        f"**{r.display_term}** ({r.act_title} - {r.section_eid})\n\n{r.definition_text}"
+        f"**{r.display_term}** ({r.act_label} - {r.section_eid})\n\n{r.definition_text}"
         for r in results
     ]
     return "\n\n---\n\n".join(parts)
 
 
 @mcp.tool()
-def find_all_definitions(term: str) -> str:
-    """Find all definitions of a term across all loaded Acts.
+def find_all_definitions(term: str, include_local: bool = False, jurisdiction: str | None = None) -> str:
+    """Find all definitions of a term across all loaded Acts, Commonwealth and state/territory.
 
     Args:
         term: The term to search for (e.g. "personal information")
+        include_local: Also return definitions that apply only inside one section, Part or Division
+            (default False: Act-wide definitions only, so Acts compare like with like)
+        jurisdiction: Optional filter: "Cth", "NSW", "Vic", "Qld", "WA", "SA", "Tas", "ACT" or "NT"
     """
-    return find_all_definitions_tool(term)
+    return find_all_definitions_tool(term, include_local, jurisdiction)
 
 
-def get_act_terms_tool(act_frbr_uri: str) -> str:
+def get_act_terms_tool(act_frbr_uri: str, include_local: bool = False) -> str:
     if _resolver is None:
         return "Error: graph not initialised. Run `lexaugraph build` first."
-    terms = _resolver.get_act_terms(act_frbr_uri)
+    terms = _resolver.get_act_terms(act_frbr_uri, include_local=include_local)
     if not terms:
         return f"No defined terms found in {act_frbr_uri}."
     act_title = _resolver.get_act_title(act_frbr_uri)
@@ -155,13 +165,14 @@ def get_act_terms_tool(act_frbr_uri: str) -> str:
 
 
 @mcp.tool()
-def get_act_terms(act_frbr_uri: str) -> str:
+def get_act_terms(act_frbr_uri: str, include_local: bool = False) -> str:
     """List all defined terms in an AU Act.
 
     Args:
         act_frbr_uri: The FRBR URI of the Act (e.g. "/akn/au/act/1988/119")
+        include_local: Also list terms defined only for one section, Part or Division
     """
-    return get_act_terms_tool(act_frbr_uri)
+    return get_act_terms_tool(act_frbr_uri, include_local)
 
 
 def entities_tool(eid: str, act_frbr_uri: str) -> str:

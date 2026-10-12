@@ -272,6 +272,7 @@ class DefinitionResolver:
                     act_frbr_uri=act_frbr_uri,
                     section_eid=section_eid,
                     act_title=act_data.get("title", act_frbr_uri),
+                    scope=data.get("scope", "act"),
                 ))
         return results
 

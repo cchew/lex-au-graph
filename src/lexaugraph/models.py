@@ -106,6 +106,21 @@ class ActData:
     ref_edges: list[RefEdge]
 
 
+_LOCALITY_LABELS = {
+    "nsw": "NSW", "vic": "Vic", "qld": "Qld", "wa": "WA", "sa": "SA", "tas": "Tas", "act": "ACT", "nt": "NT",
+}
+
+
+def jurisdiction_of(act_frbr_uri: str) -> str:
+    """Display label for the jurisdiction in an Akoma Ntoso work URI: /akn/au/... is the Commonwealth
+    ("Cth"); /akn/au-vic/... is "Vic" and so on. Unknown localities are upper-cased as given."""
+    head = act_frbr_uri.split("/")[2] if act_frbr_uri.startswith("/akn/") and act_frbr_uri.count("/") >= 2 else ""
+    if "-" not in head:
+        return "Cth"
+    locality = head.split("-", 1)[1].lower()
+    return _LOCALITY_LABELS.get(locality, locality.upper())
+
+
 @dataclass
 class DefinitionResult:
     term: str
@@ -114,6 +129,17 @@ class DefinitionResult:
     act_frbr_uri: str
     section_eid: str
     act_title: str
+    scope: str = "act"  # "act", or the eId of the container a local definition applies to
+
+    @property
+    def jurisdiction(self) -> str:
+        return jurisdiction_of(self.act_frbr_uri)
+
+    @property
+    def act_label(self) -> str:
+        """Act title, with the jurisdiction appended for anything that is not Commonwealth."""
+        j = self.jurisdiction
+        return self.act_title if j == "Cth" else f"{self.act_title} ({j})"
 
 
 @dataclass
