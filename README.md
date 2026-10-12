@@ -24,10 +24,10 @@ Builds a directed graph over the lex-au AKN corpus:
 
 Exposes ten MCP tools:
 
-- `resolve_definition(term, act_frbr_uri)` - canonical definition text and section citation for a defined term within an Act
+- `resolve_definition(term, act_frbr_uri, section_eid?)` - definition text and section citation for a defined term within an Act. Pass `section_eid` (the section the term is being read in) to reach a definition that is local to a section, Part or Division, and to choose between several definitions of one word in different Parts
 - `cross_references(eid, act_frbr_uri)` - all outgoing cross-references from a section
-- `find_all_definitions(term)` - all definitions of a term across all loaded Acts (useful when the Act is unknown or a term is defined in multiple Acts)
-- `get_act_terms(act_frbr_uri)` - all defined terms in an Act, sorted alphabetically
+- `find_all_definitions(term, include_local?, jurisdiction?)` - all Act-wide definitions of a term across all loaded Acts (useful when the Act is unknown or a term is defined in multiple Acts). `include_local` adds definitions that apply only inside one section, Part or Division; `jurisdiction` filters to `Cth`, `NSW`, `Vic`, `Qld`, `WA`, `SA`, `Tas`, `ACT` or `NT`. Duplicate-looking results are tidied: an internal pointer ("has the meaning given by section 5") is dropped when the Act has the real definition, and an "includes ..." supplement is merged into the "means ..." definition of the same section
+- `get_act_terms(act_frbr_uri, include_local?)` - all defined terms in an Act, sorted alphabetically (Act-wide terms unless `include_local`)
 - `impact_analysis(eid, act_frbr_uri, max_hops)` - everything that transitively cites a section (reverse-reachability fan-in)
 - `entities(eid, act_frbr_uri)` - entities (offices/agencies) mentioned in a section
 - `find_entity(display_term)` - Act-scoped entity homonym search across all loaded Acts
@@ -94,6 +94,12 @@ lexaugraph extract-untagged --xml /path/to/act.xml --act-frbr-uri "/akn/au/act/1
 # Start the MCP server
 lexaugraph serve
 ```
+
+## Jurisdictions and scope
+
+The graph reads any lex-au-format corpus, Commonwealth or state/territory. A work URI `/akn/au/...` is the Commonwealth; `/akn/au-vic/...` is Victoria, and so on. Results label non-Commonwealth Acts with their jurisdiction ("Privacy and Data Protection Act 2014 (Vic)"); Commonwealth output is unchanged.
+
+A defined term has a `scope`: `act` for a definition that applies to the whole Act, otherwise the eId of the section, Part, Division or schedule it is local to (lex-au writes `term-<slug>--<container eId>` for these). Act-wide queries, counts, the Act Alike browse list and the complexity metric ignore local terms; `resolve_definition` applies a local definition only inside its container, where it beats an Act-wide meaning of the same word.
 
 ## MCP server
 

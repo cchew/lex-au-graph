@@ -1,11 +1,12 @@
 from __future__ import annotations
+from dataclasses import replace
 import functools
 import re
 from typing import Any, Optional
 
 from . import impact
 from .graph import LexAuGraph
-from .models import DefinitionResult, MultiActTermSummary, _confidence_label
+from .models import DefinitionResult, MultiActTermSummary, _confidence_label, jurisdiction_of
 
 _JUNK_TERM_PATTERN = re.compile(
     r"^(and|or|but|the|of|in|on|at|to|for|does not|is not|means|includes?)( .*)?$",
@@ -53,6 +54,58 @@ def _containment_prefix(section_eid: str) -> str:
     if "__" not in section_eid:
         return ""
     return section_eid.rsplit("__", 1)[0]
+
+
+_INTERNAL_POINTER_RE = re.compile(
+    r"^[\s\u2014\u2013,:-]*(?:has\s+the\s+(?:same\s+)?meaning\s+(?:given\s+)?(?:by|in|as\s+in)|see)\b", re.IGNORECASE
+)
+_INTERNAL_TARGET_RE = re.compile(r"\b(?:sections?|subsections?|Parts?|Divisions?|clauses?|Schedules?)\s+\S+", re.IGNORECASE)
+_OTHER_ACT_RE = re.compile(r"\bAct\s+\d{4}\b|\bRegulations?\b", re.IGNORECASE)
+
+
+def _is_internal_pointer(text: str) -> bool:
+    """A short "has the meaning given by section 5" style pointer to another provision of the same Act."""
+    return (
+        len(text) <= 120
+        and bool(_INTERNAL_POINTER_RE.match(text))
+        and bool(_INTERNAL_TARGET_RE.search(text))
+        and not _OTHER_ACT_RE.search(text)
+    )
+
+
+def tidy_definitions(results: list[DefinitionResult]) -> list[DefinitionResult]:
+    """Collapse the cards a reader would see as duplicates, leaving genuine multi-meaning terms alone.
+
+    - Within one Act, drop an internal pointer ("has the meaning given by section 5") when the Act also
+      has a substantive definition of the term: the pointer only says where to look.
+    - Merge a supplementary "includes ..." definition into the "means ..." definition in the same section
+      and scope ("personal information includes such things as fingerprints...").
+    Several different meanings of one word in different sections or Parts (DD 1.5) are kept apart.
+    """
+    by_act: dict[str, list[DefinitionResult]] = {}
+    order: list[str] = []
+    for r in results:
+        if r.act_frbr_uri not in by_act:
+            order.append(r.act_frbr_uri)
+        by_act.setdefault(r.act_frbr_uri, []).append(r)
+    out: list[DefinitionResult] = []
+    for uri in order:
+        group = by_act[uri]
+        if len(group) > 1:
+            real = [r for r in group if not _is_internal_pointer(r.definition_text)]
+            if real:
+                group = real
+        merged: list[DefinitionResult] = []
+        for r in group:
+            host = next(
+                (m for m in merged if m.section_eid == r.section_eid and m.scope == r.scope), None
+            )
+            if host is not None and re.match(r"^[\s\u2014\u2013-]*includes?\b", r.definition_text, re.IGNORECASE):
+                host.definition_text = f"{host.definition_text} {r.definition_text.strip()}"
+                continue
+            merged.append(replace(r))
+        out.extend(merged)
+    return out
 
 
 class DefinitionResolver:
@@ -412,6 +465,15 @@ class DefinitionResolver:
                 )
             )
         return sorted(summaries, key=lambda s: -s.act_count)
+
+    def jurisdictions(self) -> list[str]:
+        """Jurisdiction labels present in the graph: Cth first, then the rest alphabetically."""
+        found = {
+            jurisdiction_of(node_id)
+            for node_id, data in self._graph.graph.nodes(data=True)
+            if data.get("type") == "act"
+        }
+        return sorted(found, key=lambda j: (j != "Cth", j))
 
     def count_acts(self) -> int:
         return sum(

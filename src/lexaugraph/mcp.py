@@ -6,7 +6,7 @@ from typing import Optional
 from fastmcp import FastMCP
 
 from .graph import LexAuGraph
-from .resolver import DefinitionResolver
+from .resolver import DefinitionResolver, tidy_definitions
 
 mcp = FastMCP("lex-au-graph")
 _resolver: Optional[DefinitionResolver] = None
@@ -125,7 +125,7 @@ def impact_analysis(eid: str, act_frbr_uri: str, max_hops: int = 3) -> str:
 def find_all_definitions_tool(term: str, include_local: bool = False, jurisdiction: str | None = None) -> str:
     if _resolver is None:
         return "Error: graph not initialised. Run `lexaugraph build` first."
-    results = _resolver.find_all_definitions(term, include_local=include_local)
+    results = tidy_definitions(_resolver.find_all_definitions(term, include_local=include_local))
     if jurisdiction:
         wanted = jurisdiction.strip().lower()
         results = [r for r in results if r.jurisdiction.lower() == wanted]
