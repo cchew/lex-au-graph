@@ -85,6 +85,12 @@ def _parse_act_node(root: ET._Element, index_entry: dict) -> ActNode:
     )
 
 
+def _in_quoted_structure(element: ET._Element) -> bool:
+    """True inside a <quotedStructure>: provision text an amending Act inserts into
+    another Act (lex-au v0.10.0+), not a provision of the Act being parsed."""
+    return any(a.tag.split("}")[-1] == "quotedStructure" for a in element.iterancestors())
+
+
 def _parse_sections(
     root: ET._Element, act_frbr_uri: str, client: "anthropic.Anthropic | None" = None
 ) -> tuple[list[SectionNode], list[RefEdge]]:
@@ -109,7 +115,11 @@ def _parse_sections(
             heading = heading_el.text.strip()
 
         text = " ".join("".join(section.itertext()).split())
-        provision_type = "schedule" if "schedule" in eid.lower() else "section"
+        quoted = _in_quoted_structure(section)
+        if quoted:
+            provision_type = "quoted"
+        else:
+            provision_type = "schedule" if "schedule" in eid.lower() else "section"
 
         section_occurrence_counts[eid] = section_occurrence_counts.get(eid, 0) + 1
 
@@ -122,6 +132,11 @@ def _parse_sections(
             occurrence=section_occurrence_counts[eid],
         )
         sections.append(node)
+
+        if quoted:
+            # Kept as a node so the text stays visible, but its citations belong to
+            # the Act it amends, not this one: no ref edges from quoted text.
+            continue
 
         for ref_el in section.findall(f".//{AKN}ref"):
             href = ref_el.get("href") or ""
@@ -187,6 +202,8 @@ def _extract_defined_terms(
         '[*[local-name()="term"] and *[local-name()="def"]]'
     )
     for p in ps:
+        if _in_quoted_structure(p):
+            continue
         term_el = p.find(f"{AKN}term")
         def_el = p.find(f"{AKN}def")
         term_text = (term_el.text or "").strip()

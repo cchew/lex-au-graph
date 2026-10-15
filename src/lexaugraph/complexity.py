@@ -6,10 +6,15 @@ from .models import ActComplexity
 
 
 def _section_ids(graph: nx.MultiDiGraph, act_frbr_uri: str) -> list[str]:
-    """All Section node ids contained directly under an Act, via 'contains' edges."""
+    """Section node ids contained directly under an Act, via 'contains' edges.
+
+    Quoted amendment text (provision_type "quoted") belongs to the Act it
+    amends, so it is excluded from this Act's word count, citations and centrality.
+    """
     return [
         target for _, target, data in graph.out_edges(act_frbr_uri, data=True)
         if data.get("type") == "contains"
+        and graph.nodes[target].get("provision_type") != "quoted"
     ]
 
 

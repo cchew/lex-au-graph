@@ -107,7 +107,7 @@ class LexAuGraph:
             )
             self.graph.add_edge(act.frbr_uri, section.node_id, key="contains", type="contains")
             section_number = _section_number_from_eid(section.eid)
-            if section_number:
+            if section_number and section.provision_type != "quoted":
                 self._section_number_index.setdefault(section.act_frbr_uri, {})[section_number] = section.node_id
 
         term_occurrence_counts: dict[str, int] = {}
@@ -140,6 +140,8 @@ class LexAuGraph:
             return
         by_display_term = {t.display_term: t for t in entity_terms}
         for section in act_data.sections:
+            if section.provision_type == "quoted":
+                continue
             counts: dict[str, int] = {}
             for match in pattern.finditer(section.text):
                 counts[match.group(0)] = counts.get(match.group(0), 0) + 1
