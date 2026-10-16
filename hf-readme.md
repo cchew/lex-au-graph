@@ -42,6 +42,13 @@ publishes a corpus update:
   conditional-statement frequency). One row per Act, viewable in the preview
   above.
 
+**Quoted amendment text.** Provisions an amending Act inserts into another Act
+(lex-au `<quotedStructure>`) appear in `graph.json` as Section nodes with
+`provision_type="quoted"`. They carry no `ref` edges and no defined terms, are
+not citation targets, and are excluded from `complexity.json` and from
+`centrality.json` sums, so for an amending Act those figures describe its own
+provisions only.
+
 See [github.com/cchew/lex-au-graph](https://github.com/cchew/lex-au-graph)
 for source code, the MCP server, and version history.
 
