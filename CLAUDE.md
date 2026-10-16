@@ -6,7 +6,7 @@ Retrieval layer of the AU Legislative Intelligence Stack. Cross-reference knowle
 
 Corpus: lex-au (../lex-au/repo/) — AKN 3.0 XML corpus
 Retrieval: lex-au-search (../lex-au-search/repo/) — hybrid search API + MCP; lex-au-graph (this repo) — cross-reference graph + definition resolution
-Applications: ClauseKit (../clause-kit/repo/) — rule extraction; term-comparison (../term-comparison/repo/) — IM2026 definition-comparison bot, built directly on this repo's DefinitionResolver
+Applications: ClauseKit (../clause-kit/repo/) — rule extraction; Act Alike (../act-alike/repo/) — term comparison across Acts (formerly term-comparison), built directly on this repo's DefinitionResolver
 
 ## Setup
 

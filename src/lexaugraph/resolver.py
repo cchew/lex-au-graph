@@ -117,7 +117,7 @@ def tidy_definitions(results: list[DefinitionResult]) -> list[DefinitionResult]:
 
 
 class DefinitionResolver:
-    ACT_ALIKE_MIN_ACTS = 2  # Task 0b: confirm against term-comparison's index
+    ACT_ALIKE_MIN_ACTS = 2  # Task 0b: confirm against Act Alike's index
 
     def __init__(self, graph: LexAuGraph, centrality: dict[str, float] | None = None) -> None:
         self._graph = graph

@@ -36,7 +36,7 @@ across the ~29,338 `defined_term` nodes:
 **Downstream:** lex-au-explorer Task 2 (cross-Act definition follow) can now detect
 pointer definitions off `definition_text`. `_follow_cross_act` was previously inert
 because the `^`-anchored pointer regex matched 0 nodes; with the operator prepended it
-has signal. Consumers must rebuild `graph.json`: lex-au-explorer, term-comparison
+has signal. Consumers must rebuild `graph.json`: lex-au-explorer, Act Alike
 (Act Alike — redeployed 2026-09-08), ClauseKit (deferred, logged to its `FUTURE.md`).
 
 ## Gap 1: `termlinks.py` extraction coverage — owned by lex-au

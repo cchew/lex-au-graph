@@ -11,7 +11,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 
 - **Depends on:** [lex-au](https://github.com/cchew/lex-au) (AKN 3.0 XML corpus as the input)
 - **Related:** [lex-au-search](https://github.com/cchew/lex-au-search) (hybrid vector search + MCP; for queries about what a term means or how it's defined across Acts)
-- **Used by:** [ClauseKit](https://github.com/cchew/clause-kit) (run claims against extracted legislation rules, grounded back to source clauses), term-comparison (compare how terms are defined across Acts)
+- **Used by:** [ClauseKit](https://github.com/cchew/clause-kit) (run claims against extracted legislation rules, grounded back to source clauses), [Act Alike](https://github.com/cchew/act-alike) (compare how terms are defined across Acts)
 
 Full stack map: [lex-au-search's `STACK.md`](https://github.com/cchew/lex-au-search/blob/main/STACK.md) and [lex-au's `FUTURE.md`](https://github.com/cchew/lex-au/blob/main/FUTURE.md).
 
