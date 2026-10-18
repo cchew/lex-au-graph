@@ -39,6 +39,34 @@ def parse_act(xml_path: Path, index_entry: dict, client: "anthropic.Anthropic | 
     )
 
 
+# lex-au index.json "structure_version" values this loader has been tested against
+# (lex-au corpus.py STRUCTURE_VERSION): 1 flat schedules, 2 nested schedules and
+# quotedStructure amendments. An unknown value means lex-au changed shape again;
+# refuse rather than ingest the wrong nodes (cf. the 2026-09 quoted-text incident).
+SUPPORTED_STRUCTURE_VERSIONS = frozenset({1, 2})
+
+
+class UnsupportedCorpusStructure(RuntimeError):
+    pass
+
+
+def check_structure_version(index: dict) -> None:
+    version = index.get("structure_version")
+    if version is None:
+        print(
+            "Warning: index.json has no structure_version (pre-2026-10-15 lex-au export); "
+            "assuming a supported shape.",
+            file=sys.stderr,
+        )
+        return
+    if version not in SUPPORTED_STRUCTURE_VERSIONS:
+        raise UnsupportedCorpusStructure(
+            f"corpus structure_version {version!r} is not supported by lex-au-graph "
+            f"(supported: {sorted(SUPPORTED_STRUCTURE_VERSIONS)}). lex-au changed the AKN "
+            "shape; update and re-test the loader before ingesting."
+        )
+
+
 def load_corpus(corpus_dir: Path, client: "anthropic.Anthropic | None" = None) -> list[ActData]:
     index_path = corpus_dir / "index.json"
     if not index_path.exists():
@@ -47,6 +75,7 @@ def load_corpus(corpus_dir: Path, client: "anthropic.Anthropic | None" = None) -
             "Check the corpus path or run 'lexaugraph build --corpus-dir <path>'."
         )
     index = json.loads(index_path.read_text())
+    check_structure_version(index)
     acts_map = index.get("acts")
     if acts_map is None:
         raise ValueError(f"index.json in {corpus_dir} is missing the 'acts' key.")
