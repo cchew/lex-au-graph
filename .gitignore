@@ -18,3 +18,9 @@ centrality.json
 
 # Superpowers planning docs live in the EA wrapper repo, not here
 docs/superpowers/
+
+# Build output, local corpus copy, local Claude state
+build/
+corpus/
+citation_candidates.json
+.claude/
