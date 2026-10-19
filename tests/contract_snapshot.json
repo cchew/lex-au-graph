@@ -1,0 +1,77 @@
+{
+  "fixtures_structure_version": 2,
+  "counts": {
+    "Carer Recognition Act 2010": {
+      "sections": 12,
+      "quoted": 0,
+      "terms": 7,
+      "edges": 6
+    },
+    "Customs Charges and Levies Legislation Amendment (Sheep and Lamb) Act 2020": {
+      "sections": 3,
+      "quoted": 1,
+      "terms": 0,
+      "edges": 1
+    },
+    "Digital ID (Transitional and Consequential Provisions) Act 2024": {
+      "sections": 3,
+      "quoted": 1,
+      "terms": 0,
+      "edges": 2
+    },
+    "Excess Exploration Credit Tax Act 2015": {
+      "sections": 5,
+      "quoted": 0,
+      "terms": 2,
+      "edges": 8
+    },
+    "Excise Tariff Amendment (Product Stewardship for Oil) Act 2023": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 1
+    },
+    "Governor-General Amendment (Salary) Act 2014": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 1
+    },
+    "Migration Legislation Amendment Act (No. 6) 1995": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 82
+    },
+    "Net Zero Economy Authority (Transitional Provisions) Act 2024": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 2
+    },
+    "New Business Tax System (Franking Deficit Tax) Act 2002": {
+      "sections": 5,
+      "quoted": 0,
+      "terms": 6,
+      "edges": 20
+    },
+    "Overseas Missions (Privileges and Immunities) Act 1995": {
+      "sections": 14,
+      "quoted": 0,
+      "terms": 9,
+      "edges": 20
+    },
+    "Public and Educational Lending Rights (Better Income for Authors) Consequential Amendments and Transitional Provisions Act 2026": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 5
+    },
+    "Tax Laws Amendment (Gifts) Act 2015": {
+      "sections": 3,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 1
+    }
+  }
+}

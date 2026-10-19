@@ -27,6 +27,7 @@ lexaugraph = "lexaugraph.cli:app"
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
+    "lexau-contract-fixtures @ git+https://github.com/cchew/lex-au@contract-fixtures-v2.0.0#subdirectory=contract-fixtures",
 ]
 
 [tool.setuptools.packages.find]
