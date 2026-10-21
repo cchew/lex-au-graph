@@ -82,3 +82,13 @@ def test_scope_survives_graph_serialisation(data, tmp_path: Path) -> None:
     loaded = LexAuGraph.load(path)
     scopes = {d.get("scope") for _, d in loaded.graph.nodes(data=True) if d.get("type") == "defined_term"}
     assert scopes == {"act", "part-I__sec-5"}
+
+
+def test_get_act_definitions_rows_carry_scope(resolver: DefinitionResolver) -> None:
+    rows = resolver.get_act_definitions(ACT, include_local=True)
+    assert {(r["term"], r["scope"]) for r in rows} == {
+        ("use", "act"),
+        ("use", "part-I__sec-5"),
+        ("disclose", "part-I__sec-5"),
+    }
+    assert all(r["scope"] == "act" for r in resolver.get_act_definitions(ACT))

@@ -376,6 +376,7 @@ class DefinitionResolver:
                 "term": term,
                 "display_term": data.get("display_term", term),
                 "section_eid": eid,
+                "scope": data.get("scope", "act"),
                 "definition_text": text,
                 "act_alike": (
                     self._passes_term_junk_filter(term)
