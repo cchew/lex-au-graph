@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<akomaNtoso xmlns="http://docs.oasis-open.org/legaldocml/ns/akn/3.0">
+  <act name="act">
+    <meta>
+      <identification source="#lex-au">
+        <FRBRWork>
+          <FRBRthis value="/akn/au/act/2026/2/!main"/>
+          <FRBRuri value="/akn/au/act/2026/2"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+        </FRBRWork>
+        <FRBRExpression>
+          <FRBRthis value="/akn/au/act/2026/2/eng@2026-01-01/!main"/>
+          <FRBRuri value="/akn/au/act/2026/2/eng@2026-01-01"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#parliament"/>
+          <FRBRlanguage language="eng"/>
+        </FRBRExpression>
+        <FRBRManifestation>
+          <FRBRthis value="/akn/au/act/2026/2/eng@2026-01-01/!main.xml"/>
+          <FRBRuri value="/akn/au/act/2026/2/eng@2026-01-01.xml"/>
+          <FRBRdate date="2026-01-01" name="Generation"/>
+          <FRBRauthor href="#lex-au"/>
+        </FRBRManifestation>
+      </identification>
+    </meta>
+    <body>
+    <part eId="part-I">
+      <num>I</num>
+      <heading>Preliminary</heading>
+      <section eId="part-I__sec-2">
+        <num>2</num>
+        <heading>Definitions</heading>
+        <content>
+          <p><term refersTo="#term-use">use</term> means <def>apply for any purpose.</def></p>
+        </content>
+      </section>
+      <section eId="part-I__sec-5">
+        <num>5</num>
+        <heading>Protection of confidential information</heading>
+        <content>
+          <p><term refersTo="#term-use--part-I__sec-5">use</term> means <def>make use of the information in a document.</def></p>
+          <p><term refersTo="#term-disclose--part-I__sec-5">disclose</term> means <def>divulge or communicate.</def></p>
+        </content>
+        <subsection eId="part-I__sec-5__subsec-1">
+          <num>(1)</num>
+          <content><p>A person must not disclose or use the information.</p></content>
+        </subsection>
+      </section>
+      <section eId="part-I__sec-6">
+        <num>6</num>
+        <heading>Other</heading>
+        <content><p>A person may use a thing.</p></content>
+      </section>
+    </part>
+  </body>
+  <attachments>
+    <attachment>
+      <hcontainer name="schedule" eId="schedule-1">
+        <num>1</num>
+        <heading>Scheme</heading>
+        <hcontainer name="clause" eId="schedule-1__clause-30">
+          <num>30</num>
+          <heading>Records</heading>
+          <content>
+            <p><term refersTo="#term-record--schedule-1">record</term> means <def>a document kept under this Schedule.</def></p>
+            <p><term refersTo="#term-scheme">scheme</term> means <def>the scheme in this Schedule.</def></p>
+          </content>
+        </hcontainer>
+      </hcontainer>
+      <hcontainer name="schedule" eId="schedule-2">
+        <num>2</num>
+        <heading>Loose</heading>
+        <content>
+          <p><term refersTo="#term-entry--schedule-2">entry</term> means <def>an item in the register.</def></p>
+        </content>
+      </hcontainer>
+    </attachment>
+  </attachments>
+</act>
+</akomaNtoso>

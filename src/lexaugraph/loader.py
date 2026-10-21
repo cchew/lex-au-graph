@@ -245,9 +245,13 @@ def _extract_defined_terms(
         operator = " ".join((term_el.tail or "").split())
         definiens = "".join(def_el.itertext()).strip()
         def_text = f"{operator} {definiens}".strip() if operator else definiens
-        section_eid = _ancestor_section_eid(p)
         refers_to = term_el.get("refersTo") or ""
         scope = refers_to.split("--", 1)[1] if "--" in refers_to else "act"
+        section_eid = _ancestor_section_eid(p)
+        if not section_eid and scope != "act":
+            # Schedule clauses are <hcontainer name="clause">, not <section>. A local definition there
+            # keys to its schedule unit so it is not dropped. Act-wide terms keep "" (unchanged).
+            section_eid = _ancestor_schedule_unit_eid(p)
         defined_terms.append(DefinedTermNode(
             term=term_text.lower(),
             display_term=term_text,
@@ -269,6 +273,25 @@ def _ancestor_section_eid(element: ET._Element) -> str:
             return parent.get("eId", "")
         parent = parent.getparent()
     return ""
+
+
+_SCHEDULE_LEAF_NAMES = frozenset({"clause", "item"})
+
+
+def _ancestor_schedule_unit_eid(element: ET._Element) -> str:
+    """Nearest schedule leaf unit (clause/item) eId, else the enclosing Schedule's eId. These match
+    the unit keys lex-au-explorer uses for schedule content."""
+    schedule_eid = ""
+    for anc in element.iterancestors():
+        if anc.tag.split("}")[-1] != "hcontainer":
+            continue
+        name = anc.get("name")
+        if name in _SCHEDULE_LEAF_NAMES and anc.get("eId"):
+            return anc.get("eId", "")
+        if name == "schedule":
+            schedule_eid = anc.get("eId", "")
+            break
+    return schedule_eid
 
 
 _INLINE_FORMATTING_TAGS = {"b", "i", "u", "sup", "sub", "span"}
