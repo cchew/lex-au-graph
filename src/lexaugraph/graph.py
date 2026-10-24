@@ -70,6 +70,15 @@ class LexAuGraph:
 
     def _add_act_nodes(self, act_data: ActData) -> None:
         act = act_data.act_node
+        existing = self.graph.nodes.get(act.frbr_uri)
+        if existing is not None and existing.get("type") == "act" and (
+            existing.get("title"), existing.get("title_id")) != (act.title, act.title_id):
+            # Two Acts under one id would merge their sections and terms (2026-10 SIS Regulations /
+            # Training Guarantee Amendment Act 1994 clash). load_corpus disambiguates; fail closed here.
+            raise ValueError(
+                f"graph id {act.frbr_uri} already holds {existing.get('title')!r}; "
+                f"cannot add {act.title!r} under the same id"
+            )
         self.graph.add_node(
             act.frbr_uri,
             type="act",

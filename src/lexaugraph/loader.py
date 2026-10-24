@@ -23,11 +23,20 @@ _PROSE_CITATION_EXTRACTION_CONFIDENCE = 0.7
 _INTRA_ACT_CITATION_EXTRACTION_CONFIDENCE = 0.6
 
 
-def parse_act(xml_path: Path, index_entry: dict, client: "anthropic.Anthropic | None" = None) -> ActData:
+def parse_act(
+    xml_path: Path,
+    index_entry: dict,
+    client: "anthropic.Anthropic | None" = None,
+    act_id: Optional[str] = None,
+) -> ActData:
+    """``act_id`` overrides the graph id (default: the XML's FRBRWork URI); load_corpus passes a
+    disambiguated id when two corpus Acts share one work URI (see assign_act_ids)."""
     tree = ET.parse(str(xml_path))
     root = tree.getroot()
 
     act_node = _parse_act_node(root, index_entry)
+    if act_id:
+        act_node.frbr_uri = act_id
     sections, ref_edges = _parse_sections(root, act_node.frbr_uri, client=client)
     defined_terms = _extract_defined_terms(root, act_node.frbr_uri)
 
@@ -79,17 +88,60 @@ def load_corpus(corpus_dir: Path, client: "anthropic.Anthropic | None" = None) -
     acts_map = index.get("acts")
     if acts_map is None:
         raise ValueError(f"index.json in {corpus_dir} is missing the 'acts' key.")
+    keyed = []
+    for key, entry in acts_map.items():
+        xml_path = corpus_dir / entry["xml_path"]
+        if xml_path.exists():
+            uri = read_work_uri(xml_path)
+            if uri:
+                keyed.append((key, entry, uri))
+    act_ids = assign_act_ids(keyed)
+    for key, entry, uri in keyed:
+        if act_ids[key] != uri:
+            print(f"Warning: work URI {uri} is shared by several corpus Acts; "
+                  f"{key} gets graph id {act_ids[key]}.", file=sys.stderr)
     result = []
-    for entry in acts_map.values():
+    for key, entry in acts_map.items():
         xml_path = corpus_dir / entry["xml_path"]
         if xml_path.exists():
             try:
-                result.append(parse_act(xml_path, entry, client=client))
+                result.append(parse_act(xml_path, entry, client=client, act_id=act_ids.get(key)))
             except ValueError as e:
                 print(f"Warning: {e} — skipping.", file=sys.stderr)
         else:
             print(f"Warning: XML not found: {xml_path}", file=sys.stderr)
     return result
+
+
+def read_work_uri(xml_path: Path) -> str:
+    """The FRBRWork URI, read without parsing the whole document."""
+    in_work = False
+    for event, el in ET.iterparse(str(xml_path), events=("start", "end")):
+        tag = el.tag.split("}")[-1] if isinstance(el.tag, str) else ""
+        if event == "start" and tag == "FRBRWork":
+            in_work = True
+        elif event == "start" and in_work and tag == "FRBRuri":
+            return el.get("value", "").rstrip("/")
+        elif event == "end" and tag in ("FRBRWork", "meta"):
+            break
+    return ""
+
+
+def assign_act_ids(entries: list[tuple[str, dict, str]]) -> dict[str, str]:
+    """Graph id per corpus key from (key, index entry, work URI). lex-au mints /akn/au/act/<year>/<no>
+    for Acts and for instruments (whose number is a statutory-rule number), so two corpus Acts can
+    share a work URI (SR 1994 No. 57 vs Act No. 57 of 1994). Unique URIs are kept as is. Within a
+    collision the Act (FRL title id starting "C") keeps the plain URI, else the first key in sorted
+    order; the others become ``<uri>~<title_id or key>``. Independent of corpus order."""
+    by_uri: dict[str, list[tuple[str, dict]]] = {}
+    for key, entry, uri in entries:
+        by_uri.setdefault(uri, []).append((key, entry))
+    ids: dict[str, str] = {}
+    for uri, group in by_uri.items():
+        group.sort(key=lambda ke: (not str(ke[1].get("title_id") or "").startswith("C"), ke[0]))
+        for i, (key, entry) in enumerate(group):
+            ids[key] = uri if i == 0 else f"{uri}~{entry.get('title_id') or key}"
+    return ids
 
 
 def _parse_act_node(root: ET._Element, index_entry: dict) -> ActNode:

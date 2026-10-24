@@ -337,6 +337,18 @@ class DefinitionResolver:
                 ))
         return results
 
+    def act_node_id(self, frbr_uri: str, title_id: Optional[str] = None) -> str:
+        """Graph id for the corpus Act with this FRBRWork URI and FRL title id. Usually the URI
+        itself; a disambiguated ``<uri>~<title_id>`` when several corpus Acts share the URI
+        (loader.assign_act_ids)."""
+        node = self._graph.graph.nodes.get(frbr_uri)
+        if not title_id or (node is not None and node.get("title_id") == title_id):
+            return frbr_uri
+        candidate = f"{frbr_uri}~{title_id}"
+        if candidate in self._graph.graph.nodes:
+            return candidate
+        return frbr_uri
+
     def get_act_title(self, act_frbr_uri: str) -> str:
         data = self._graph.graph.nodes.get(act_frbr_uri, {})
         return data.get("title", act_frbr_uri)
