@@ -49,6 +49,8 @@ not citation targets, and are excluded from `complexity.json` and from
 `centrality.json` sums, so for an amending Act those figures describe its own
 provisions only.
 
+**Scoped terms and ids.** Defined-term nodes carry `scope`: `act`, or the eId of the section, Part, Division or Schedule a local definition applies to. When two instruments share an AKN-style work URI, the Act keeps it and the other gets `<uri>~<FRL title id>`; the only case is SIS Regulations 1994, `/akn/au/act/1994/57~F1996B00580`.
+
 See [github.com/cchew/lex-au-graph](https://github.com/cchew/lex-au-graph)
 for source code, the MCP server, and version history.
 

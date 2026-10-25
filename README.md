@@ -5,7 +5,7 @@ Cross-reference knowledge graph over Australian Commonwealth legislation, for de
 > [!NOTE]
 > [search.gov.au](https://search.gov.au)'s Align stream ("Common Ground", Department of Finance, alpha — see [Government content is AI food](https://www.youtube.com/watch?v=X5UAWFl7-FE), APS Digital Profession Innovation Month, July 2026) tackles the same problem at whole-of-government scale: surfacing linkage and divergence across Acts and agencies.
 
-**Status: v0.13.1**
+**Status: v0.15.0**
 
 ## Uses / used by
 
@@ -38,6 +38,10 @@ Exposes ten MCP tools:
 ## Motivation
 
 Defined term chains in AU legislation span Acts. "Income support payment" in the Social Security Act 1991, for example, references a definition that in turn cross-references the Superannuation Industry (Supervision) Act 1993. Flat vector search returns sections ranked by semantic similarity but cannot reliably traverse these chains. A graph layer makes them deterministic.
+
+## Graph ids
+
+An Act node's id is its FRBR work URI (`/akn/au/act/<year>/<number>`); section and term ids build on it. When two corpus instruments share that URI, the Act keeps it and the other gets `<uri>~<FRL title id>`. The only case today is SIS Regulations 1994: `/akn/au/act/1994/57~F1996B00580` (`/akn/au/act/1994/57` is Training Guarantee (Administration) Amendment Act 1994). `DefinitionResolver.act_node_id(frbr_uri, title_id)` maps a lex-au URI and title id to the graph id. Adding a different Act under an existing id raises instead of merging.
 
 ## Linking back to legislation.gov.au
 
@@ -111,6 +115,7 @@ Registers ten tools on a FastMCP server. Connect via any MCP client (Claude Desk
 
 ## Versions
 
+- **v0.15.0** - Defined terms carry a scope (`DefinedTermNode.scope`), and Schedule-local definitions are kept, attached to the nearest clause or item. `get_act_definitions(include_local)` returns the scope on each row. Acts that share an AKN-style id are kept apart (see Graph ids), `act_node_id` raises for an unknown Act, and an unknown corpus `structure_version` is refused. Rebuilt dataset: 179,566 nodes (3,085 Acts, 39,882 defined terms of which 9,058 local), 305,067 edges.
 - **v0.14.1** - Quoted amendment text (`<quotedStructure>`, lex-au v0.10.0+) is typed `quoted`: no ref edges or definitions, not a citation target, excluded from complexity and centrality sums. Rebuilt dataset: 169,327 nodes, 298,437 edges.
 - **v0.14.0** - State and territory Acts. Results carry a jurisdiction (`jurisdiction_of`: Cth, NSW, Vic, Qld, WA, SA, Tas, ACT, NT) and non-Commonwealth Act titles gain a suffix such as "(Vic)", Commonwealth output unchanged. Defined terms have a `scope` (`act`, or the container a local definition applies to, read from lex-au's `term-<slug>--<container>` refersTo): Act-wide queries, counts, the browse list and the complexity metric ignore local terms, `resolve_definition` applies one only inside its container and prefers it there, local terms never become entities. `find_all_definitions`, `get_act_terms` and `get_act_definitions` take `include_local`; `tidy_definitions` drops internal pointers when the Act has the real definition and merges "includes" supplements; `DefinitionResolver.jurisdictions()`. MCP: `resolve_definition` takes `section_eid`, `find_all_definitions` takes `include_local` and `jurisdiction`, `get_act_terms` takes `include_local`.
 - **v0.13.1** - Hardened against two lex-au corpus defects downstream of the v0.3.1 converter work: unresolved cross-Act `<ref>` elements now carry a stub href that `_resolve_ref` correctly declines to treat as resolved (was short-circuiting title-index resolution), and duplicate-eId `<section>` elements get an `occurrence`-suffixed node id (mirroring the existing `DefinedTermNode` pattern) instead of silently merging into one node, with citations attributed to the correct occurrence's node from parse time. 375 tests.
