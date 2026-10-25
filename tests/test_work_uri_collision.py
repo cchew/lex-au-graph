@@ -94,7 +94,16 @@ def test_act_node_id_without_collision_is_the_work_uri(tmp_path) -> None:
     r = DefinitionResolver(g)
     assert r.act_node_id(URI, "F1996B00580") == URI
     assert r.act_node_id(URI) == URI
-    assert r.act_node_id("/akn/au/act/2000/1", "C2000A00001") == "/akn/au/act/2000/1"
+
+
+def test_act_node_id_raises_when_nothing_matches(tmp_path) -> None:
+    g = LexAuGraph()
+    g.build(_corpus(tmp_path, (REGS,)))
+    r = DefinitionResolver(g)
+    with pytest.raises(KeyError, match="C2004A04733"):
+        r.act_node_id(URI, "C2004A04733")
+    with pytest.raises(KeyError):
+        r.act_node_id("/akn/au/act/2000/1", "C2000A00001")
 
 
 def test_assign_act_ids_is_order_independent_and_only_touches_collisions() -> None:
