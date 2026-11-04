@@ -127,6 +127,9 @@ def rate_limit_wait(exc: BaseException) -> float | None:
     return None
 
 
+GIT_TIMEOUT_SECONDS = 900  # per git call; the whole bulk fetch measured 221 s
+
+
 def git_bulk_fetch(repo: str, sha: str, target: Path, include: list[str] | None = None) -> None:
     """One shallow git fetch of the pinned sha plus a batched `git lfs pull`,
     then drop .git (mirrors lex-au's scripts/restore_corpus_from_hf.py).
@@ -142,7 +145,8 @@ def git_bulk_fetch(repo: str, sha: str, target: Path, include: list[str] | None 
 
     def git(*args: str) -> str:
         return subprocess.run(["git", *args], cwd=target, env=env, check=True,
-                              capture_output=True, text=True).stdout.strip()
+                              capture_output=True, text=True,
+                              timeout=GIT_TIMEOUT_SECONDS).stdout.strip()
 
     target.mkdir(parents=True, exist_ok=True)
     try:
