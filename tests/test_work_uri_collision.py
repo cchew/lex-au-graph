@@ -1,5 +1,7 @@
 """Two corpus Acts sharing one FRBR work URI (real case: SR 1994 No. 57, the SIS Regulations, and
-Act No. 57 of 1994, both minted /akn/au/act/1994/57 by lex-au) must stay two graph Acts."""
+Act No. 57 of 1994, both minted /akn/au/act/1994/57 by lex-au) must stay two graph Acts.
+(historical: lex-au mints /akn/au/regulation/<year>/<FRL title id> for regulations since B1, so this exact collision no longer occurs; the test keeps the generic collision handling covered)
+"""
 import json
 from pathlib import Path
 

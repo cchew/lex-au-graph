@@ -41,7 +41,7 @@ Defined term chains in AU legislation span Acts. "Income support payment" in the
 
 ## Graph ids
 
-An Act node's id is its FRBR work URI (`/akn/au/act/<year>/<number>`); section and term ids build on it. When two corpus instruments share that URI, the Act keeps it and the other gets `<uri>~<FRL title id>`. The only case today is SIS Regulations 1994: `/akn/au/act/1994/57~F1996B00580` (`/akn/au/act/1994/57` is Training Guarantee (Administration) Amendment Act 1994). `DefinitionResolver.act_node_id(frbr_uri, title_id)` maps a lex-au URI and title id to the graph id. Adding a different Act under an existing id raises instead of merging.
+An Act node's id is its FRBR work URI (`/akn/au/act/<year>/<number>`); section and term ids build on it. Regulations use `/akn/au/regulation/<year>/<FRL title id>` (lex-au B1), so ids are unique today. If two corpus instruments ever share a URI, the Act keeps it and the other gets `<uri>~<FRL title id>`. Before B1, SIS Regulations 1994 was `/akn/au/act/1994/57~F1996B00580`. `DefinitionResolver.act_node_id(frbr_uri, title_id)` maps a lex-au URI and title id to the graph id. Adding a different Act under an existing id raises instead of merging.
 
 ## Linking back to legislation.gov.au
 
