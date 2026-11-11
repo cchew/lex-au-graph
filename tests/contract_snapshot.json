@@ -1,11 +1,17 @@
 {
-  "fixtures_structure_version": 2,
+  "fixtures_structure_version": 3,
   "counts": {
     "Carer Recognition Act 2010": {
       "sections": 12,
       "quoted": 0,
       "terms": 7,
       "edges": 6
+    },
+    "Coastal Waters (State Powers) Act 1980": {
+      "sections": 7,
+      "quoted": 0,
+      "terms": 0,
+      "edges": 8
     },
     "Customs Charges and Levies Legislation Amendment (Sheep and Lamb) Act 2020": {
       "sections": 3,
@@ -16,7 +22,7 @@
     "Digital ID (Transitional and Consequential Provisions) Act 2024": {
       "sections": 3,
       "quoted": 1,
-      "terms": 0,
+      "terms": 18,
       "edges": 2
     },
     "Excess Exploration Credit Tax Act 2015": {
@@ -46,7 +52,7 @@
     "Net Zero Economy Authority (Transitional Provisions) Act 2024": {
       "sections": 3,
       "quoted": 0,
-      "terms": 0,
+      "terms": 1,
       "edges": 2
     },
     "New Business Tax System (Franking Deficit Tax) Act 2002": {
@@ -64,7 +70,7 @@
     "Public and Educational Lending Rights (Better Income for Authors) Consequential Amendments and Transitional Provisions Act 2026": {
       "sections": 3,
       "quoted": 0,
-      "terms": 0,
+      "terms": 3,
       "edges": 5
     },
     "Tax Laws Amendment (Gifts) Act 2015": {
