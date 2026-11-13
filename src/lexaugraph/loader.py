@@ -51,9 +51,9 @@ def parse_act(
 # lex-au index.json "structure_version" values this loader has been tested against
 # (lex-au corpus.py STRUCTURE_VERSION): 1 flat schedules, 2 nested schedules and
 # quotedStructure amendments, 3 (i)/(ii) nested as subparagraph and restarted lists
-# scoped `lstN`. An unknown value means lex-au changed shape again;
+# scoped `lstN`, 4 schedule paragraphs nested under their numbered subclause. An unknown value means lex-au changed shape again;
 # refuse rather than ingest the wrong nodes (cf. the 2026-09 quoted-text incident).
-SUPPORTED_STRUCTURE_VERSIONS = frozenset({1, 2, 3})
+SUPPORTED_STRUCTURE_VERSIONS = frozenset({1, 2, 3, 4})
 
 
 class UnsupportedCorpusStructure(RuntimeError):
